@@ -5,13 +5,6 @@ This project sets up a complete Elastic Security Detection as Code demo environm
 - A forked detection-rules repository with custom naming
 - GitHub integration for monitoring detection rules
 
-## Important Considerations
-
-### Terraform State Management
-This configuration generates Elastic Cloud passwords that are stored in Terraform state. As with any Terraform project containing sensitive outputs, consider using a remote backend with encryption (S3, Terraform Cloud, etc.) rather than local state files. See the [Terraform Backend Configuration](#terraform-backend-configuration) section for setup options.
-
-Note: If you're using Fleet integrations with this setup, be aware of potential configuration drift issues with secrets (see [elastic/terraform-provider-elasticstack#689](https://github.com/elastic/terraform-provider-elasticstack/issues/689)).
-
 ## Prerequisites
 
 ### 1. GitHub Personal Access Token with SSO Authorization
@@ -131,38 +124,6 @@ After deployment:
 2. Configure the Elastic GitHub integration in the production instance
 3. Set up detection rules CI/CD pipeline in your forked repository
 4. Test the DAC workflow by modifying detection rules
-
-## Terraform Backend Configuration
-
-For production use, consider configuring a remote backend to handle state encryption automatically. Example configurations:
-
-### S3 Backend
-```hcl
-# backend.tf
-terraform {
-  backend "s3" {
-    bucket  = "your-terraform-state-bucket"
-    key     = "elastic-dac-demo/terraform.tfstate"
-    region  = "us-east-1"
-    encrypt = true
-  }
-}
-```
-
-### Terraform Cloud
-```hcl
-# backend.tf
-terraform {
-  cloud {
-    organization = "your-org"
-    workspaces {
-      name = "elastic-dac-demo"
-    }
-  }
-}
-```
-
-After adding a backend configuration, run `terraform init -migrate-state` to move your existing state.
 
 ## Clean Up
 
