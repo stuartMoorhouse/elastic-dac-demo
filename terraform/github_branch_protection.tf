@@ -5,10 +5,10 @@ data "github_repository" "detection_rules" {
   name = "${var.repo_name_prefix}-detection-rules"
 }
 
-# Create dev branch
+# Create dev branch if it doesn't exist
 resource "github_branch" "dev" {
-  repository = data.github_repository.detection_rules.name
-  branch     = "dev"
+  repository    = data.github_repository.detection_rules.name
+  branch        = "dev"
   source_branch = "main"
 }
 
@@ -25,16 +25,16 @@ resource "github_branch_protection" "main" {
     require_last_push_approval      = false
   }
 
-  # Require status checks
+  # Require status checks from pythonpackage.yml workflow
   required_status_checks {
     strict   = true
-    contexts = ["Lint Detection Rules", "Rule Format Validation"]
+    contexts = ["build"]
   }
 
-  # Enforce for admins
+  # Enforce for admins - blocks all direct pushes
   enforce_admins = true
 
-  # Block direct pushes
+  # Block direct pushes and destructive actions
   allows_deletions    = false
   allows_force_pushes = false
 }
@@ -44,17 +44,18 @@ resource "github_branch_protection" "dev" {
   repository_id = data.github_repository.detection_rules.node_id
   pattern       = "dev"
 
-  # Minimal status checks for dev
+  # SECURITY BEST PRACTICE: Require validation to pass before merge
+  # This prevents broken detection rules from being committed
   required_status_checks {
-    strict   = false
-    contexts = ["Basic Lint (Dev Branch)"]
+    strict   = true # Must be up-to-date with base branch
+    contexts = ["build"]
   }
 
-  # Allow direct pushes for development
-  enforce_admins      = false
+  # Enforce for admins to ensure no bypassing of validation
+  enforce_admins      = true
   allows_deletions    = false
   allows_force_pushes = false
-  
+
   depends_on = [github_branch.dev]
 }
 
@@ -62,11 +63,11 @@ resource "github_branch_protection" "dev" {
 resource "github_repository" "detection_rules_settings" {
   name                 = data.github_repository.detection_rules.name
   visibility           = "public"
-  has_issues          = true
-  has_projects        = false
-  has_wiki            = false
+  has_issues           = true
+  has_projects         = false
+  has_wiki             = false
   vulnerability_alerts = true
-  
+
   security_and_analysis {
     secret_scanning {
       status = "enabled"
@@ -81,16 +82,18 @@ resource "github_repository" "detection_rules_settings" {
 output "branch_protection_summary" {
   value = {
     main_branch = {
-      protected = true
-      requires_reviews = 1
-      requires_status_checks = ["Lint Detection Rules", "Rule Format Validation"]
-      enforced_for_admins = true
+      protected              = true
+      requires_reviews       = 1
+      requires_status_checks = ["build"]
+      enforced_for_admins    = true
+      direct_pushes_blocked  = true
     }
     dev_branch = {
-      protected = true
-      allows_direct_pushes = true
-      requires_status_checks = ["Basic Lint (Dev Branch)"]
-      enforced_for_admins = false
+      protected              = true
+      allows_direct_pushes   = true
+      requires_status_checks = ["build"]
+      enforced_for_admins    = true
+      validation_must_pass   = true
     }
   }
   description = "Summary of branch protection rules"
