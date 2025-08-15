@@ -57,6 +57,73 @@ resource "null_resource" "clone_repository" {
         echo "Setting upstream for main branch..."
         git branch --set-upstream-to=upstream/main main
         
+        echo "Creating custom content directory structure..."
+        CUSTOM_DIR="${var.repo_name_prefix}"
+        mkdir -p "$${CUSTOM_DIR}/rules" "$${CUSTOM_DIR}/docs" "$${CUSTOM_DIR}/workflows"
+        
+        echo "Creating README for custom content..."
+        cat > "$${CUSTOM_DIR}/README.md" << 'README'
+# ${var.repo_name_prefix} - Custom Detection Rules and Workflows
+
+This directory contains all customizations specific to this fork of elastic/detection-rules.
+
+## Directory Structure
+
+\`\`\`
+${var.repo_name_prefix}/
+├── rules/          # Your custom detection rules go here
+├── workflows/      # Custom CI/CD workflows documentation
+├── docs/          # Documentation for custom rules and processes
+└── README.md      # This file
+\`\`\`
+
+## Testing Custom Rules
+
+\`\`\`bash
+# Validate custom rules
+python -m detection_rules validate --rules-dir ${var.repo_name_prefix}/rules/
+
+# Test custom rules
+python -m detection_rules test ${var.repo_name_prefix}/rules/
+\`\`\`
+README
+        
+        echo "Creating CUSTOM-CONTENT.md guide..."
+        cat > "CUSTOM-CONTENT.md" << 'GUIDE'
+# Custom Content Guide
+
+This fork includes custom content not present in the original elastic/detection-rules repository.
+
+## Quick Reference - What's Custom?
+
+### Custom Additions:
+\`\`\`
+├── ${var.repo_name_prefix}/         ← CUSTOM: All custom content
+│   ├── rules/                   ← CUSTOM: Your detection rules
+│   ├── workflows/               ← CUSTOM: Workflow documentation  
+│   └── docs/                    ← CUSTOM: Custom documentation
+│
+└── CUSTOM-CONTENT.md            ← CUSTOM: This file
+\`\`\`
+
+### Everything Else:
+All other files and directories are from the original Elastic detection-rules repository.
+
+## How to Add Custom Detection Rules
+
+1. Create your rule in: \`${var.repo_name_prefix}/rules/your-rule.toml\`
+2. Test with: \`python -m detection_rules test ${var.repo_name_prefix}/rules/\`
+3. Push to dev branch or create PR to main
+GUIDE
+        
+        echo "Committing custom directory structure..."
+        git add .
+        git commit -m "chore: Initialize custom content directory structure
+
+- Create ${var.repo_name_prefix}/ directory for custom content
+- Add subdirectories for rules, docs, and workflows
+- Add documentation for custom content management"
+        
         echo "Repository cloned and configured successfully!"
       else
         echo "Repository already exists at $${TARGET_DIR}"

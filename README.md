@@ -73,6 +73,8 @@ This will:
 - Fork the elastic/detection-rules repository as `dac-demo-detection-rules`
 - Clone the fork locally to `../dac-demo-detection-rules`
 - Configure the upstream remote for syncing
+- Create a custom content directory structure (`dac-demo/` by default)
+- Add documentation for managing custom detection rules
 
 ## Customization
 
@@ -81,6 +83,10 @@ You can customize the forked repository name in your `terraform.tfvars` file:
 ```hcl
 repo_name_prefix = "my-custom-prefix"  # Creates: my-custom-prefix-detection-rules
 ```
+
+This prefix is also used for the custom content directory inside the repository:
+- Repository name: `my-custom-prefix-detection-rules`
+- Custom directory: `my-custom-prefix/rules/`, `my-custom-prefix/docs/`, etc.
 
 ### Elastic Cloud Configuration
 The default configuration creates 8GB RAM instances. Modify in `terraform/variables.tf` if needed.
