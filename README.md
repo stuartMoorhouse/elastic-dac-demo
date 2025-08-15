@@ -30,20 +30,14 @@ Since the Elastic organization requires SAML SSO authorization, you must configu
 
 ⚠️ **Important**: Without this authorization, the fork creation will fail with a "Resource protected by organization SAML enforcement" error.
 
-#### Step 3: Add Token to Environment
-Add your token to the `.env` file:
-```bash
-GITHUB_TOKEN=ghp_your_token_here
-```
+#### Step 3: Save Token for Terraform
+You'll add this token to your `terraform.tfvars` file in the setup steps below.
 
 ### 2. Elastic Cloud API Key
 1. Log in to https://cloud.elastic.co
 2. Go to Features → API Keys
 3. Create a new API key with deployment management permissions
-4. Add to `.env` file:
-```bash
-EC_API_KEY=your_elastic_cloud_api_key_here
-```
+4. Save this key - you'll add it to your `terraform.tfvars` file in the setup steps below
 
 ## Setup Instructions
 
@@ -53,18 +47,19 @@ git clone <this-repo>
 cd elastic-dac-demo
 ```
 
-### 2. Configure environment variables
+### 2. Configure Terraform variables
 ```bash
-cp .env-example .env
+cd terraform
+cp terraform.tfvars.example terraform.tfvars
 ```
-Edit `.env` and add your credentials:
-- `EC_API_KEY=your_elastic_cloud_api_key_here`
-- `GITHUB_TOKEN=your_github_token_here`
+Edit `terraform.tfvars` and add your credentials:
+```hcl
+ec_api_key   = "your_elastic_cloud_api_key_here"
+github_token = "your_github_token_here"
+```
 
 ### 3. Initialize Terraform
 ```bash
-cd terraform
-export $(grep -v '^#' ../.env | xargs)
 terraform init
 ```
 
@@ -82,7 +77,7 @@ This will:
 ## Customization
 
 ### Repository Name Prefix
-You can customize the forked repository name by creating a `terraform.tfvars` file:
+You can customize the forked repository name in your `terraform.tfvars` file:
 ```hcl
 repo_name_prefix = "my-custom-prefix"  # Creates: my-custom-prefix-detection-rules
 ```
@@ -117,13 +112,49 @@ Run this command to check if your token is properly authorized:
 gh api orgs/elastic --silent && echo "✓ Authorized" || echo "✗ Not authorized"
 ```
 
+## CI/CD Workflow
+
+The repository includes automated CI/CD workflows and branch protection:
+
+### Branch Strategy
+- **main branch**: Protected, requires pull requests and passing CI checks
+  - Requires 1 code review approval
+  - Must pass "Lint Detection Rules" and "Rule Format Validation" checks
+  - No direct pushes allowed (enforced for admins)
+  
+- **dev branch**: Development branch with relaxed rules
+  - Direct pushes allowed for rapid development
+  - Only requires basic lint check to pass
+  - No review requirements
+
+### CI Pipeline
+The GitHub Actions workflow automatically runs:
+1. **Lint Detection Rules**: Validates detection rule syntax
+2. **Rule Format Validation**: Checks TOML format compliance
+3. **Basic Security Scan**: Scans for potential secrets in rules
+4. **Basic Lint** (dev only): Quick syntax check for dev branch
+
+### Working with the Repository
+```bash
+# For development work
+git checkout dev
+# Make changes and push directly
+git push origin dev
+
+# For production changes
+git checkout -b feature/my-feature
+# Make changes
+git push origin feature/my-feature
+# Create pull request to main branch
+```
+
 ## Next Steps
 
 After deployment:
 1. Access Kibana for both environments using the outputted URLs
 2. Configure the Elastic GitHub integration in the production instance
-3. Set up detection rules CI/CD pipeline in your forked repository
-4. Test the DAC workflow by modifying detection rules
+3. Test the DAC workflow by modifying detection rules in the dev branch
+4. Create pull requests to promote changes from dev to main
 
 ## Clean Up
 

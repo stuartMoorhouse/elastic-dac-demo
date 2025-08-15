@@ -12,11 +12,11 @@ variable "region" {
 variable "elastic_version" {
   description = "Elasticsearch version to deploy"
   type        = string
-  default     = "8.17.0"
+  default     = "9.1.2"
 
   validation {
     condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.elastic_version))
-    error_message = "Elastic version must be in semantic version format (e.g., 8.17.0)."
+    error_message = "Elastic version must be in semantic version format (e.g., 9.1.2)."
   }
 }
 
@@ -88,4 +88,16 @@ variable "repo_name_prefix" {
   description = "Prefix for the forked detection-rules repository"
   type        = string
   default     = "dac-demo"
+}
+
+variable "ec_api_key" {
+  description = "Elastic Cloud API key for managing deployments"
+  type        = string
+  sensitive   = true
+}
+
+variable "github_token" {
+  description = "GitHub Personal Access Token with repo and workflow scopes"
+  type        = string
+  sensitive   = true
 }

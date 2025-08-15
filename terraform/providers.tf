@@ -17,6 +17,10 @@ terraform {
   }
 }
 
-provider "ec" {}
+provider "ec" {
+  apikey = var.ec_api_key
+}
 
-provider "github" {}
+provider "github" {
+  token = var.github_token
+}

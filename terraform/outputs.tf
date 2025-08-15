@@ -1,21 +1,55 @@
-output "deployments" {
-  value = {
-    for k, v in ec_deployment.this : k => {
-      id                     = v.id
-      elasticsearch_endpoint = v.elasticsearch.https_endpoint
-      kibana_endpoint        = v.kibana.https_endpoint
-      elasticsearch_username = v.elasticsearch_username
-    }
-  }
-  description = "Deployment details for all environments"
+# Production deployment outputs
+output "production_deployment_id" {
+  value       = ec_deployment.production.id
+  description = "Production deployment ID"
 }
 
-output "elasticsearch_passwords" {
-  value = {
-    for k, v in ec_deployment.this : k => v.elasticsearch_password
-  }
+output "production_elasticsearch_endpoint" {
+  value       = ec_deployment.production.elasticsearch.https_endpoint
+  description = "Production Elasticsearch endpoint"
+}
+
+output "production_kibana_endpoint" {
+  value       = ec_deployment.production.kibana.https_endpoint
+  description = "Production Kibana endpoint"
+}
+
+output "production_elasticsearch_username" {
+  value       = ec_deployment.production.elasticsearch_username
+  description = "Production Elasticsearch username"
+}
+
+output "production_elasticsearch_password" {
+  value       = ec_deployment.production.elasticsearch_password
   sensitive   = true
-  description = "Elasticsearch passwords for all environments"
+  description = "Production Elasticsearch password"
+}
+
+# Development deployment outputs
+output "development_deployment_id" {
+  value       = ec_deployment.development.id
+  description = "Development deployment ID"
+}
+
+output "development_elasticsearch_endpoint" {
+  value       = ec_deployment.development.elasticsearch.https_endpoint
+  description = "Development Elasticsearch endpoint"
+}
+
+output "development_kibana_endpoint" {
+  value       = ec_deployment.development.kibana.https_endpoint
+  description = "Development Kibana endpoint"
+}
+
+output "development_elasticsearch_username" {
+  value       = ec_deployment.development.elasticsearch_username
+  description = "Development Elasticsearch username"
+}
+
+output "development_elasticsearch_password" {
+  value       = ec_deployment.development.elasticsearch_password
+  sensitive   = true
+  description = "Development Elasticsearch password"
 }
 
 output "github_repository_name" {
