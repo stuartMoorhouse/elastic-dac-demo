@@ -24,6 +24,24 @@ resource "null_resource" "create_fork" {
     EOT
   }
 
+  provisioner "local-exec" {
+    when    = destroy
+    command = <<-EOT
+      set -e
+      echo "Cleaning up GitHub repository ${self.triggers.repo_name}..."
+      
+      GITHUB_USER="$(gh api user --jq '.login')"
+      
+      if gh repo view "$${GITHUB_USER}/${self.triggers.repo_name}" &>/dev/null; then
+        echo "Deleting repository ${self.triggers.repo_name}..."
+        gh repo delete "$${GITHUB_USER}/${self.triggers.repo_name}" --yes
+        echo "Repository deleted successfully"
+      else
+        echo "Repository ${self.triggers.repo_name} does not exist, skipping deletion"
+      fi
+    EOT
+  }
+
   triggers = {
     repo_name = local.repo_name
   }

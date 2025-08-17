@@ -69,3 +69,30 @@ output "github_repository_url" {
   description = "GitHub URL of the forked repository"
   depends_on  = [null_resource.create_fork]
 }
+
+# Local deployment outputs
+output "local_deployment_id" {
+  value       = ec_deployment.local.id
+  description = "Local deployment ID"
+}
+
+output "local_elasticsearch_endpoint" {
+  value       = ec_deployment.local.elasticsearch.https_endpoint
+  description = "Local Elasticsearch endpoint"
+}
+
+output "local_kibana_endpoint" {
+  value       = ec_deployment.local.kibana.https_endpoint
+  description = "Local Kibana endpoint"
+}
+
+output "local_elasticsearch_username" {
+  value       = ec_deployment.local.elasticsearch_username
+  description = "Local Elasticsearch username"
+}
+
+output "local_elasticsearch_password" {
+  value       = ec_deployment.local.elasticsearch_password
+  sensitive   = true
+  description = "Local Elasticsearch password"
+}

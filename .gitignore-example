@@ -8,9 +8,12 @@ env/
 
 # Credentials and sensitive files
 elastic-credentials.json
+elastic-credentials/
 *.pem
 *.key
 *.crt
+*.p12
+.detection-rules-cfg.json
 
 # Claude Code specific files (not part of project)
 # Uncomment these if using Claude Code

@@ -38,6 +38,12 @@ variable "deployment_name_development" {
   default     = "elastic-cloud-development"
 }
 
+variable "deployment_name_local" {
+  description = "Name for the local Elastic Cloud deployment"
+  type        = string
+  default     = "elastic-cloud-local"
+}
+
 variable "elasticsearch_size" {
   description = "Size of Elasticsearch instances (in GB RAM)"
   type        = string

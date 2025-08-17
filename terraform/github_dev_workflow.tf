@@ -5,7 +5,12 @@ resource "github_repository_file" "dev_branch_validation_workflow" {
   repository = data.github_repository.detection_rules.name
   branch     = "dev"
   file       = ".github/workflows/${var.repo_name_prefix}-dev-branch-validate.yml"
-  
+
+  depends_on = [
+    github_branch.dev, # Dev branch must exist first
+    data.github_repository.detection_rules
+  ]
+
   content = <<-EOT
 name: ${var.repo_name_prefix} Dev Branch Validation
 
@@ -53,7 +58,7 @@ EOT
   commit_message = "Add custom dev branch validation workflow for ${var.repo_name_prefix}"
   commit_author  = "Terraform"
   commit_email   = "terraform@${var.repo_name_prefix}.local"
-  
+
   lifecycle {
     ignore_changes = [commit_message, commit_author, commit_email]
   }

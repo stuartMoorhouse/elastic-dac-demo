@@ -1,9 +1,10 @@
 # Elastic Detection as Code (DAC) Demo Environment
 
 This project sets up a complete Elastic Security Detection as Code demo environment using Terraform, including:
-- Two Elastic Cloud instances (production and development)
-- A forked detection-rules repository with custom naming
-- GitHub integration for monitoring detection rules
+- Three Elastic Cloud instances (local/dev testing, development, production)
+- A forked detection-rules repository with CI/CD workflows
+- Automated deployment pipelines for detection rules
+- GitHub integration for monitoring and deployment
 
 ## Prerequisites
 
@@ -69,12 +70,16 @@ terraform apply --auto-approve
 ```
 
 This will:
-- Create two Elastic Cloud deployments (production and development)
+- Create three Elastic Cloud deployments (local, development, and production)
 - Fork the elastic/detection-rules repository as `dac-demo-detection-rules`
 - Clone the fork locally to `../dac-demo-detection-rules`
 - Configure the upstream remote for syncing
 - Create a custom content directory structure (`dac-demo/` by default)
-- Add documentation for managing custom detection rules
+- Set up authentication for local development (`.detection-rules-cfg.json`)
+- Configure CI/CD workflows with PR validation
+- Set up branch protection with linear history enforcement
+- Create API keys with minimal permissions for GitHub Actions
+- Store credentials securely (not in source control)
 
 ## Customization
 
@@ -102,7 +107,13 @@ To view sensitive outputs (passwords):
 ```bash
 terraform output -json production_elasticsearch_password | jq -r
 terraform output -json development_elasticsearch_password | jq -r
+terraform output -json local_elasticsearch_password | jq -r
 ```
+
+API keys and credentials are stored in:
+- `../elastic-credentials/` - Local directory with cluster credentials (not in git)
+- GitHub Actions Secrets - API keys for CI/CD deployments
+- `../dac-demo-detection-rules/.detection-rules-cfg.json` - Local development config
 
 ## Troubleshooting
 
@@ -120,38 +131,94 @@ gh api orgs/elastic --silent && echo "✓ Authorized" || echo "✗ Not authorize
 
 ## CI/CD Workflow
 
-The repository includes automated CI/CD workflows and branch protection:
+The repository includes a complete Detection as Code CI/CD pipeline with automated deployments.
 
-### Branch Strategy
-- **main branch**: Protected, requires pull requests and passing CI checks
-  - Requires 1 code review approval
-  - Must pass "Lint Detection Rules" and "Rule Format Validation" checks
-  - No direct pushes allowed (enforced for admins)
-  
-- **dev branch**: Development branch with relaxed rules
-  - Direct pushes allowed for rapid development
-  - Only requires basic lint check to pass
-  - No review requirements
+### Deployment Environments
 
-### CI Pipeline
-The GitHub Actions workflow automatically runs:
-1. **Lint Detection Rules**: Validates detection rule syntax
-2. **Rule Format Validation**: Checks TOML format compliance
-3. **Basic Security Scan**: Scans for potential secrets in rules
-4. **Basic Lint** (dev only): Quick syntax check for dev branch
+1. **Local Elastic Cloud**
+   - For initial rule development and testing
+   - Dedicated cloud instance for individual developer testing
+   - Pre-configured with `.detection-rules-cfg.json` for easy local testing
+   
+2. **Development Elastic Cloud**
+   - Automatically receives rules from feature branches
+   - For integration testing before production
+   
+3. **Production Elastic Cloud**
+   - Receives rules when PRs are merged to main
+   - Protected with comprehensive validation checks
 
-### Working with the Repository
+### Branch Protection & Merge Strategy
+
+#### Main Branch Protection
+- **No direct pushes** - all changes require pull requests
+- **Linear history enforced** - commits must be rebased before merge
+- **Regular merge commits** (not squash) - preserves full commit history for audit trails
+- **Required checks**:
+  - `validate-rules` status check must pass
+  - 1 review approval required
+  - All PR conversations must be resolved
+- **Enforced for administrators** - no bypassing protection
+
+#### Why Linear History with Regular Merges?
+- **Full audit trail**: Every commit is preserved showing rule evolution
+- **Clean history**: Linear progression without merge commit clutter
+- **Forensic capability**: Can trace back exact changes for security investigations
+- **Compliance**: Complete change history for regulatory requirements
+
+### Automated Deployment Pipeline
+
+#### Feature Branch → Development
+- Push to `feature/*`, `feat/*`, or `fix/*` branches
+- Automatically validates and deploys custom rules to Development
+- No approval required for rapid iteration
+
+#### Pull Request → Validation
+- Open PR from feature branch to main
+- Automated validation workflow runs:
+  - Syntax validation for all rules
+  - KQL query validation
+  - Duplicate rule ID detection
+  - Metadata completeness check
+  - Detection rules test suite
+- Must pass all checks before merge is allowed
+
+#### Main Branch → Production
+- After PR approval and validation
+- Merge commits preserve full feature branch history
+- Comprehensive validation before deployment
+- Automatic deployment to Production
+- API key authentication with minimal required permissions
+
+### Complete Workflow Example
+
+For a detailed step-by-step guide of the entire Detection as Code workflow, see [DAC_WORKFLOW_GUIDE.md](DAC_WORKFLOW_GUIDE.md).
+
+Quick start:
 ```bash
-# For development work
-git checkout dev
-# Make changes and push directly
-git push origin dev
+# 1. Create feature branch
+git checkout -b feature/new-detection-rule
 
-# For production changes
-git checkout -b feature/my-feature
-# Make changes
-git push origin feature/my-feature
-# Create pull request to main branch
+# 2. Add custom rule to custom-rules/rules/
+cd custom-rules/rules
+# Create your .toml rule file
+
+# 3. Test locally against your Local Elastic cluster
+python -m detection_rules validate-rule *.toml
+python -m detection_rules test
+
+# 4. Push to trigger Dev deployment
+git add .
+git commit -m "feat: Add new detection rule"
+git push origin feature/new-detection-rule
+
+# 5. Create PR for Production deployment
+gh pr create --title "Add new detection rule"
+
+# 6. After PR approval, ensure linear history before merge
+git fetch origin main
+git rebase origin/main
+git push --force-with-lease origin feature/new-detection-rule
 ```
 
 ## Next Steps
