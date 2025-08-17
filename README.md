@@ -16,10 +16,12 @@ Since the Elastic organization requires SAML SSO authorization, you must configu
 1. Go to https://github.com/settings/tokens
 2. Click "Generate new token" → "Generate new token (classic)"
 3. Select the following scopes:
-   - `repo` (full control of private repositories)
+   - `repo` (full control of private repositories - **required for auto-PR creation**)
    - `workflow` (update GitHub Action workflows)
    - `read:org` (read org and team membership)
+   - `write:packages` (optional, for package publishing)
 4. Generate the token and copy it
+5. **Important**: This token will be used both by Terraform AND as a GitHub Actions secret for automated PR creation
 
 #### Step 2: Authorize Token for Elastic Organization (REQUIRED)
 **This step is mandatory for forking the elastic/detection-rules repository:**
@@ -73,12 +75,16 @@ This will:
 - Create three Elastic Cloud deployments (local, development, and production)
 - Fork the elastic/detection-rules repository as `dac-demo-detection-rules`
 - Clone the fork locally to `../dac-demo-detection-rules`
+- Set up Python virtual environment with all dependencies
 - Configure the upstream remote for syncing
 - Create a custom content directory structure (`dac-demo/` by default)
 - Set up authentication for local development (`.detection-rules-cfg.json`)
-- Configure CI/CD workflows with PR validation
-- Set up branch protection with linear history enforcement
+- Configure CI/CD workflows with automatic PR creation
+- Set up branch protection with required status checks
 - Create API keys with minimal permissions for GitHub Actions
+- Configure GitHub PAT for automated workflows
+- Set up rollback capabilities for emergency recovery
+- Initialize version.lock for rule versioning
 - Store credentials securely (not in source control)
 
 ## Customization
@@ -111,7 +117,7 @@ terraform output -json local_elasticsearch_password | jq -r
 ```
 
 API keys and credentials are stored in:
-- `../elastic-credentials/` - Local directory with cluster credentials (not in git)
+- `terraform/elastic-credentials/` - Local directory with cluster credentials (not in git)
 - GitHub Actions Secrets - API keys for CI/CD deployments
 - `../dac-demo-detection-rules/.detection-rules-cfg.json` - Local development config
 
@@ -129,9 +135,55 @@ Run this command to check if your token is properly authorized:
 gh api orgs/elastic --silent && echo "✓ Authorized" || echo "✗ Not authorized"
 ```
 
-## CI/CD Workflow
+## CI/CD Workflow & Governance Model
 
-The repository includes a complete Detection as Code CI/CD pipeline with automated deployments.
+This implementation follows the **GM1 Governance Model: Git as Single Source of Truth**
+
+### What is GM1?
+- **Git is authoritative** - All detection rules MUST originate from Git
+- **One-way sync** - Rules flow from Git → Elastic, never the reverse
+- **No manual edits in Kibana** - All changes go through pull requests
+- **Full audit trail** - Every change is tracked in Git history
+- **Rollback via Git** - Recovery uses Git commits, not Elastic exports
+
+### Workflow Overview
+
+```
+Feature Branch          Dev Branch              Main Branch
+     │                      │                        │
+     ├──[Push]──→ ✓        │                        │
+     │            ↓         │                        │
+     │       Validation     │                        │
+     │            ↓         │                        │
+     │       Auto-PR────────→                        │
+     │                      │                        │
+     │                 [Review & Merge]              │
+     │                      │                        │
+     │                      ├──→ Development         │
+     │                      │    Environment         │
+     │                      │                        │
+     │                      ├──[PR]─────────────────→
+     │                      │                        │
+     │                      │              [Review & Merge]
+     │                      │                        │
+     │                      │                        ├──→ Production
+     │                      │                        │    Environment
+     │                      │                        │
+     │                      │                   version.lock
+     │                      │                        ↓
+     │                      │                    [Commit]
+```
+
+### Key Features
+
+- **Automatic PR Creation**: Feature branches automatically create PRs to dev branch after validation
+- **Multi-Stage Deployment**: Feature → Dev → Production with proper approval gates
+- **Version Locking**: Automatic version management for production deployments
+- **Rollback Capabilities**: Both manual and automatic rollback on failures
+- **Python Environment**: Pre-configured virtual environment with all dependencies
+- **Branch Protection**: Enforced code review and validation checks
+- **Audit Trail**: Complete history with GitHub issues for incidents
+- **Backup & Recovery**: Automatic backups before any rollback operation
 
 ### Deployment Environments
 
@@ -166,29 +218,87 @@ The repository includes a complete Detection as Code CI/CD pipeline with automat
 - **Forensic capability**: Can trace back exact changes for security investigations
 - **Compliance**: Complete change history for regulatory requirements
 
+### Workflow Summary
+
+1. **Developer creates rule** in feature branch
+2. **Push triggers validation** - automatic syntax and test checks
+3. **Auto-PR to dev** if validation passes (no manual PR needed)
+4. **Review required** - someone must approve the PR
+5. **Merge to dev** deploys to Development environment
+6. **Test in Development** with real data
+7. **PR from dev to main** for production promotion
+8. **Review + validation** required before merge
+9. **Merge to main** deploys to Production
+10. **Version lock** automatically updated and committed
+
 ### Automated Deployment Pipeline
 
-#### Feature Branch → Development
+#### Feature Branch → Automatic PR Creation
 - Push to `feature/*`, `feat/*`, or `fix/*` branches
-- Automatically validates and deploys custom rules to Development
-- No approval required for rapid iteration
+- Automatically validates custom rules
+- **NEW**: If validation passes, automatically creates PR to `dev` branch
+- No manual PR creation needed for the first stage
 
-#### Pull Request → Validation
-- Open PR from feature branch to main
+#### Dev Branch → Development Environment
+- PR review and approval required
+- Once merged to `dev`, automatically deploys to Development
+- Allows testing with real data before production
+
+#### Pull Request to Main → Validation
+- Create PR from `dev` branch to `main`
 - Automated validation workflow runs:
   - Syntax validation for all rules
   - KQL query validation
   - Duplicate rule ID detection
   - Metadata completeness check
   - Detection rules test suite
-- Must pass all checks before merge is allowed
+- Must pass `validate-rules` status check
+- Requires 1 approval and resolved conversations
 
 #### Main Branch → Production
 - After PR approval and validation
-- Merge commits preserve full feature branch history
+- **NEW**: Automatically updates version.lock file
 - Comprehensive validation before deployment
 - Automatic deployment to Production
+- Commits version.lock back to main branch
 - API key authentication with minimal required permissions
+
+### Rollback Capabilities
+
+The pipeline includes comprehensive rollback features for emergency recovery:
+
+#### Manual Rollback
+- Trigger from GitHub Actions UI
+- Choose environment (Development or Production)
+- Two rollback modes:
+  - **Last Known Good**: Automatically finds previous working version
+  - **Specific Commit**: Rollback to exact commit SHA
+- Creates backup before rollback
+- Validates rules before deploying
+- Creates GitHub issue for incident tracking
+- Stores backup artifacts for 30 days
+
+#### Automatic Rollback
+- Triggers automatically when Production deployment fails
+- Rolls back to previous commit
+- Creates high-priority GitHub issue
+- No manual intervention required for initial recovery
+
+#### How to Trigger Manual Rollback
+1. Go to Actions tab in GitHub repository
+2. Select "Rollback Detection Rules" workflow
+3. Click "Run workflow"
+4. Select environment and rollback type
+5. Monitor progress and check created issue
+
+### Version Lock Strategy
+
+The pipeline implements version locking for production deployments:
+
+- **Before Production Deploy**: Runs `python -m detection_rules dev build-release --update-version-lock`
+- **Version Tracking**: Each rule gets a version number that increments on changes
+- **Consistency**: Ensures same rule versions across environments
+- **Audit Trail**: version.lock file tracks all rule versions in Git history
 
 ### Complete Workflow Example
 
@@ -204,21 +314,22 @@ cd custom-rules/rules
 # Create your .toml rule file
 
 # 3. Test locally against your Local Elastic cluster
-python -m detection_rules validate-rule *.toml
-python -m detection_rules test
+# Note: Virtual environment is already set up by Terraform
+cd ../dac-demo-detection-rules
+./activate.sh  # Activate the Python virtual environment
+python -m detection_rules validate-rule custom-rules/rules/*.toml
+python -m detection_rules test custom-rules/rules/
 
-# 4. Push to trigger Dev deployment
+# 4. Push to trigger validation and auto-PR
 git add .
 git commit -m "feat: Add new detection rule"
 git push origin feature/new-detection-rule
 
-# 5. Create PR for Production deployment
-gh pr create --title "Add new detection rule"
+# 5. Auto-PR is created! Check GitHub for the PR to dev branch
+# After dev testing, create PR to main for Production
 
-# 6. After PR approval, ensure linear history before merge
-git fetch origin main
-git rebase origin/main
-git push --force-with-lease origin feature/new-detection-rule
+# 6. If rollback needed
+# Go to GitHub Actions → Rollback Detection Rules → Run workflow
 ```
 
 ## Next Steps

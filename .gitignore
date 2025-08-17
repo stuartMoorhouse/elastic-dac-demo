@@ -18,7 +18,7 @@ terraform.rc
 
 # Elastic credentials - NEVER commit these
 elastic-credentials/
-elastic-credentials.json
+terraform/elastic-credentials/
 *.pem
 *.key
 *.crt

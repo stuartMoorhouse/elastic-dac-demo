@@ -142,7 +142,39 @@ GUIDE
 - Add subdirectories for rules, docs, and workflows
 - Add documentation for custom content management"
         
+        echo "Setting up Python virtual environment..."
+        python3 -m venv env
+        
+        echo "Installing dependencies..."
+        ./env/bin/pip install --upgrade pip
+        ./env/bin/pip install .[dev]
+        ./env/bin/pip install lib/kql lib/kibana
+        
+        echo "Building initial release and creating version lock..."
+        ./env/bin/python -m detection_rules dev build-release --update-version-lock
+        
+        if [ -f "version.lock" ]; then
+          echo "Version lock created successfully"
+          git add version.lock
+          git commit -m "chore: Initialize version.lock for rule versioning
+          
+          - Create initial version.lock file
+          - Ensures consistent rule versions across deployments"
+        else
+          echo "Note: version.lock not created (may require rules to be present)"
+        fi
+        
+        echo "Creating activation helper script..."
+        cat > activate.sh << 'ACTIVATE'
+#!/bin/bash
+# Helper script to activate the virtual environment
+source env/bin/activate
+echo "Virtual environment activated. Run 'deactivate' to exit."
+ACTIVATE
+        chmod +x activate.sh
+        
         echo "Repository cloned and configured successfully!"
+        echo "To activate the virtual environment, run: cd $${TARGET_DIR} && ./activate.sh"
       else
         echo "Repository already exists at $${TARGET_DIR}"
       fi
