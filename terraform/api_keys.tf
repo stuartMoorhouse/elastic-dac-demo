@@ -108,8 +108,8 @@ resource "null_resource" "create_dev_api_key" {
       ENCODED_API_KEY=$(echo -n "$${API_KEY_ID}:$${API_KEY_VALUE}" | base64)
       
       # Store the API key and Cloud ID in a local file (not in source control)
-      mkdir -p ./elastic-credentials
-      cat > ./elastic-credentials/dev-cluster.json << CREDS
+      mkdir -p ./elastic/credentials
+      cat > ./elastic/credentials/dev-cluster.json << CREDS
 {
   "cloud_id": "${ec_deployment.development.elasticsearch.cloud_id}",
   "api_key": "$${ENCODED_API_KEY}",
@@ -120,7 +120,7 @@ resource "null_resource" "create_dev_api_key" {
 }
 CREDS
       
-      echo "Development API key generated and stored in ./elastic-credentials/dev-cluster.json"
+      echo "Development API key generated and stored in ./elastic/credentials/dev-cluster.json"
       
       # Store in temp file for GitHub secret creation
       echo "$${ENCODED_API_KEY}" > /tmp/dev_elastic_api_key.txt
@@ -193,8 +193,8 @@ resource "null_resource" "create_prod_api_key" {
       ENCODED_API_KEY=$(echo -n "$${API_KEY_ID}:$${API_KEY_VALUE}" | base64)
       
       # Store the API key and Cloud ID in a local file (not in source control)
-      mkdir -p ./elastic-credentials
-      cat > ./elastic-credentials/prod-cluster.json << CREDS
+      mkdir -p ./elastic/credentials
+      cat > ./elastic/credentials/prod-cluster.json << CREDS
 {
   "cloud_id": "${ec_deployment.production.elasticsearch.cloud_id}",
   "api_key": "$${ENCODED_API_KEY}",
@@ -205,7 +205,7 @@ resource "null_resource" "create_prod_api_key" {
 }
 CREDS
       
-      echo "Production API key generated and stored in ./elastic-credentials/prod-cluster.json"
+      echo "Production API key generated and stored in ./elastic/credentials/prod-cluster.json"
       
       # Store in temp file for GitHub secret creation
       echo "$${ENCODED_API_KEY}" > /tmp/prod_elastic_api_key.txt
@@ -294,7 +294,7 @@ output "elastic_api_keys_configured" {
 }
 
 output "elastic_credentials_location" {
-  value       = "./elastic-credentials/"
+  value       = "./elastic/credentials/"
   description = "Location of stored Elastic credentials (not in source control)"
   depends_on = [
     null_resource.create_dev_api_key,

@@ -117,7 +117,7 @@ terraform output -json local_elasticsearch_password | jq -r
 ```
 
 API keys and credentials are stored in:
-- `terraform/elastic-credentials/` - Local directory with cluster credentials (not in git)
+- `terraform/elastic/credentials/` - Local directory with cluster credentials (not in git)
 - GitHub Actions Secrets - API keys for CI/CD deployments
 - `../dac-demo-detection-rules/.detection-rules-cfg.json` - Local development config
 
