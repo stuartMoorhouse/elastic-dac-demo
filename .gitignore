@@ -27,6 +27,12 @@ elastic-credentials.json
 # Detection rules configuration
 .detection-rules-cfg.json
 
+# Claude Code specific files
+.claude/
+CLAUDE.md
+about-this-template.md
+product-requirement-prompts.md
+
 # IDE files
 .vscode/
 .idea/
