@@ -196,15 +196,25 @@ resource "null_resource" "create_test_data" {
         curl -k -X PUT "$${ES_ENDPOINT}/_data_stream/logs-network_traffic" \
           -u "$${ES_USERNAME}:$${ES_PASSWORD}"
         
-        # Generate timestamps for the last hour
-        CURRENT_TIME=$(date -u +%Y-%m-%dT%H:%M:%S.000Z)
-        TIME_1M_AGO=$(date -u -d '1 minute ago' +%Y-%m-%dT%H:%M:%S.000Z 2>/dev/null || date -u -v-1M +%Y-%m-%dT%H:%M:%S.000Z)
-        TIME_2M_AGO=$(date -u -d '2 minutes ago' +%Y-%m-%dT%H:%M:%S.000Z 2>/dev/null || date -u -v-2M +%Y-%m-%dT%H:%M:%S.000Z)
-        TIME_3M_AGO=$(date -u -d '3 minutes ago' +%Y-%m-%dT%H:%M:%S.000Z 2>/dev/null || date -u -v-3M +%Y-%m-%dT%H:%M:%S.000Z)
-        TIME_5M_AGO=$(date -u -d '5 minutes ago' +%Y-%m-%dT%H:%M:%S.000Z 2>/dev/null || date -u -v-5M +%Y-%m-%dT%H:%M:%S.000Z)
-        TIME_10M_AGO=$(date -u -d '10 minutes ago' +%Y-%m-%dT%H:%M:%S.000Z 2>/dev/null || date -u -v-10M +%Y-%m-%dT%H:%M:%S.000Z)
-        TIME_15M_AGO=$(date -u -d '15 minutes ago' +%Y-%m-%dT%H:%M:%S.000Z 2>/dev/null || date -u -v-15M +%Y-%m-%dT%H:%M:%S.000Z)
-        TIME_30M_AGO=$(date -u -d '30 minutes ago' +%Y-%m-%dT%H:%M:%S.000Z 2>/dev/null || date -u -v-30M +%Y-%m-%dT%H:%M:%S.000Z)
+        # Generate timestamps for the last hour with milliseconds
+        # Using hardcoded milliseconds for cross-platform compatibility
+        BASE_TIME=$(date -u +%Y-%m-%dT%H:%M:%S)
+        BASE_1M=$(date -u -d '1 minute ago' +%Y-%m-%dT%H:%M:%S 2>/dev/null || date -u -v-1M +%Y-%m-%dT%H:%M:%S)
+        BASE_2M=$(date -u -d '2 minutes ago' +%Y-%m-%dT%H:%M:%S 2>/dev/null || date -u -v-2M +%Y-%m-%dT%H:%M:%S)
+        BASE_3M=$(date -u -d '3 minutes ago' +%Y-%m-%dT%H:%M:%S 2>/dev/null || date -u -v-3M +%Y-%m-%dT%H:%M:%S)
+        BASE_5M=$(date -u -d '5 minutes ago' +%Y-%m-%dT%H:%M:%S 2>/dev/null || date -u -v-5M +%Y-%m-%dT%H:%M:%S)
+        BASE_10M=$(date -u -d '10 minutes ago' +%Y-%m-%dT%H:%M:%S 2>/dev/null || date -u -v-10M +%Y-%m-%dT%H:%M:%S)
+        BASE_15M=$(date -u -d '15 minutes ago' +%Y-%m-%dT%H:%M:%S 2>/dev/null || date -u -v-15M +%Y-%m-%dT%H:%M:%S)
+        BASE_30M=$(date -u -d '30 minutes ago' +%Y-%m-%dT%H:%M:%S 2>/dev/null || date -u -v-30M +%Y-%m-%dT%H:%M:%S)
+        
+        CURRENT_TIME="$${BASE_TIME}.013Z"
+        TIME_1M_AGO="$${BASE_1M}.123Z"
+        TIME_2M_AGO="$${BASE_2M}.456Z"
+        TIME_3M_AGO="$${BASE_3M}.789Z"
+        TIME_5M_AGO="$${BASE_5M}.234Z"
+        TIME_10M_AGO="$${BASE_10M}.567Z"
+        TIME_15M_AGO="$${BASE_15M}.890Z"
+        TIME_30M_AGO="$${BASE_30M}.012Z"
         
         # Bulk upload MALICIOUS C2 traffic (will trigger detection)
         # These represent beaconing behavior to known C2 infrastructure
