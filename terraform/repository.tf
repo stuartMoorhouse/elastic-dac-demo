@@ -28,7 +28,7 @@ resource "null_resource" "create_fork" {
       set -e
       echo "Cleaning up GitHub repository ${self.triggers.repo_name}..."
       
-      GITHUB_USER="${var.github_owner}"
+      GITHUB_USER="$(gh api user --jq '.login')"
       
       if gh repo view "$${GITHUB_USER}/${self.triggers.repo_name}" &>/dev/null; then
         echo "Deleting repository ${self.triggers.repo_name}..."
@@ -42,6 +42,39 @@ resource "null_resource" "create_fork" {
 
   triggers = {
     repo_name = local.repo_name
+  }
+}
+
+# Enable GitHub Actions on the forked repository
+resource "null_resource" "enable_github_actions" {
+  depends_on = [null_resource.create_fork]
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      set -e
+      echo "Enabling GitHub Actions on the forked repository..."
+      
+      # Wait a moment for the fork to be fully ready
+      sleep 5
+      
+      # Enable GitHub Actions using gh CLI
+      gh api repos/${var.github_owner}/${local.repo_name}/actions/permissions \
+        -X PUT \
+        -H "Accept: application/vnd.github.v3+json" \
+        --input - << 'EOF'
+      {
+        "enabled": true,
+        "allowed_actions": "all"
+      }
+      EOF
+      
+      echo "GitHub Actions enabled successfully!"
+    EOT
+  }
+
+  triggers = {
+    repo_name = local.repo_name
+    timestamp = timestamp()
   }
 }
 
