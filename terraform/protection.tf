@@ -37,8 +37,8 @@ resource "github_branch_protection" "main" {
     require_code_owner_reviews      = false
     required_approving_review_count = 1
     pull_request_bypassers          = []
-    restrict_dismissals             = true
-    dismissal_restrictions          = [var.detection_team_lead_username]
+    restrict_dismissals             = false
+    # Note: dismissal_restrictions removed - collaborators with write access can dismiss reviews
   }
 
   enforce_admins                  = true

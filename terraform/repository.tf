@@ -25,23 +25,66 @@ resource "null_resource" "create_fork" {
   provisioner "local-exec" {
     when    = destroy
     command = <<-EOT
-      set -e
       echo "Cleaning up GitHub repository ${self.triggers.repo_name}..."
       
-      GITHUB_USER="$(gh api user --jq '.login')"
+      # Get GitHub user - fallback to trigger value if gh CLI fails
+      GITHUB_USER="$(gh api user --jq '.login' 2>/dev/null || echo '${self.triggers.github_owner}')"
       
+      # Check if repository exists
       if gh repo view "$${GITHUB_USER}/${self.triggers.repo_name}" &>/dev/null; then
-        echo "Deleting repository ${self.triggers.repo_name}..."
-        gh repo delete "$${GITHUB_USER}/${self.triggers.repo_name}" --yes
-        echo "Repository deleted successfully"
+        echo "Repository ${self.triggers.repo_name} exists."
+        
+        # First, try to delete without checking permissions (faster if already authorized)
+        echo "Attempting to delete repository ${self.triggers.repo_name}..."
+        if gh repo delete "$${GITHUB_USER}/${self.triggers.repo_name}" --yes 2>/dev/null; then
+          echo "Repository deleted successfully"
+        else
+          # If deletion failed, check if it's a permission issue
+          echo "Initial deletion attempt failed. Checking permissions..."
+          
+          # Use gh auth status to check current scopes
+          if ! gh auth status 2>&1 | grep -q "delete_repo"; then
+            echo ""
+            echo "================================================================"
+            echo "MANUAL ACTION REQUIRED:"
+            echo ""
+            echo "GitHub CLI needs 'delete_repo' permission to delete repositories."
+            echo "Please run this command in another terminal:"
+            echo ""
+            echo "  gh auth refresh -h github.com -s delete_repo"
+            echo ""
+            echo "After authentication completes, press Enter here to continue..."
+            echo "================================================================"
+            echo ""
+            
+            # Wait for user to complete authentication
+            read -p "Press Enter after completing authentication..." 
+            
+            # Try deletion again
+            echo "Retrying repository deletion..."
+            if gh repo delete "$${GITHUB_USER}/${self.triggers.repo_name}" --yes 2>&1; then
+              echo "Repository deleted successfully"
+            else
+              echo "WARNING: Could not delete repository ${self.triggers.repo_name}"
+              echo "You can delete it manually at: https://github.com/$${GITHUB_USER}/${self.triggers.repo_name}/settings"
+            fi
+          else
+            echo "WARNING: Could not delete repository (not a permission issue)"
+            echo "You can delete it manually at: https://github.com/$${GITHUB_USER}/${self.triggers.repo_name}/settings"
+          fi
+        fi
       else
         echo "Repository ${self.triggers.repo_name} does not exist, skipping deletion"
       fi
+      
+      # Always exit successfully so terraform destroy continues
+      exit 0
     EOT
   }
 
   triggers = {
     repo_name = local.repo_name
+    github_owner = var.github_owner  # Store it in triggers so it's available during destroy
   }
 }
 
@@ -273,10 +316,34 @@ ACTIVATE
     EOT
   }
 
+  provisioner "local-exec" {
+    when    = destroy
+    command = <<-EOT
+      echo "Cleaning up cloned repository directory..."
+      
+      # Use the repo_name from triggers which includes the parameterized prefix
+      REPO_NAME="${self.triggers.repo_name}"
+      TARGET_DIR="../../$${REPO_NAME}"
+      
+      if [ -d "$${TARGET_DIR}" ]; then
+        echo "Removing directory: $${TARGET_DIR}"
+        rm -rf "$${TARGET_DIR}"
+        echo "Directory removed successfully"
+      else
+        echo "Directory $${TARGET_DIR} does not exist, skipping cleanup"
+      fi
+      
+      # Always exit successfully so terraform destroy continues
+      exit 0
+    EOT
+  }
+
   triggers = {
     repo_name = local.repo_name
   }
-}# Set up dac-demo directory structure in the forked repository
+}
+
+# Set up dac-demo directory structure in the forked repository
 
 resource "null_resource" "setup_dac_demo_rules" {
   depends_on = [
@@ -422,13 +489,7 @@ GITIGNORE
         
         echo "dac-demo directory structure created successfully!"
         
-        # Create dev branch if it doesn't exist
-        if ! git show-ref --verify --quiet refs/heads/dev; then
-          echo "Creating dev branch..."
-          git checkout -b dev
-          git push -u origin dev
-          git checkout main
-        fi
+        # Note: dev branch is created via github_branch.dev resource in protection.tf
         
       else
         echo "Repository directory not found at $${REPO_DIR}"

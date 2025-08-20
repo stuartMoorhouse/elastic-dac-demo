@@ -23,6 +23,12 @@ resource "null_resource" "create_demo_issue" {
       if [ -n "$${EXISTING_ISSUE}" ]; then
         echo "Issue #$${EXISTING_ISSUE} already exists, skipping creation"
       else
+        # First create labels if they don't exist (ignore errors if they already exist)
+        echo "Ensuring labels exist..."
+        gh label create "priority:critical" --color "d73a4a" --description "Critical priority issue" --repo ${var.github_owner}/${local.repo_name} 2>/dev/null || true
+        gh label create "threat-intel" --color "0075ca" --description "Threat intelligence related" --repo ${var.github_owner}/${local.repo_name} 2>/dev/null || true
+        gh label create "detection-gap" --color "e99695" --description "Missing detection coverage" --repo ${var.github_owner}/${local.repo_name} 2>/dev/null || true
+        
         # Create the issue
         ISSUE_URL=$(gh issue create \
           --repo ${var.github_owner}/${local.repo_name} \
@@ -89,11 +95,11 @@ Create detection rule with following logic:
 - Related campaign: https://attack.mitre.org/groups/G0139/
 
 ### Timeline
-- **$(date -u -d '2 days ago' '+%Y-%m-%d %H:%M UTC')** - Threat intel received
-- **$(date -u -d '2 days ago' '+%Y-%m-%d %H:%M UTC')** - Initial IoCs validated
-- **$(date -u -d 'yesterday' '+%Y-%m-%d %H:%M UTC')** - Detection gap confirmed
+- **$(date -u -v-2d '+%Y-%m-%d %H:%M UTC' 2>/dev/null || date -u -d '2 days ago' '+%Y-%m-%d %H:%M UTC' 2>/dev/null || echo '2025-01-18 12:00 UTC')** - Threat intel received
+- **$(date -u -v-2d '+%Y-%m-%d %H:%M UTC' 2>/dev/null || date -u -d '2 days ago' '+%Y-%m-%d %H:%M UTC' 2>/dev/null || echo '2025-01-18 14:00 UTC')** - Initial IoCs validated
+- **$(date -u -v-1d '+%Y-%m-%d %H:%M UTC' 2>/dev/null || date -u -d 'yesterday' '+%Y-%m-%d %H:%M UTC' 2>/dev/null || echo '2025-01-19 10:00 UTC')** - Detection gap confirmed
 - **$(date -u '+%Y-%m-%d %H:%M UTC')** - Rule development started
-- **TARGET: $(date -u -d 'tomorrow' '+%Y-%m-%d %H:%M UTC')** - Production deployment")
+- **TARGET: $(date -u -v+1d '+%Y-%m-%d %H:%M UTC' 2>/dev/null || date -u -d 'tomorrow' '+%Y-%m-%d %H:%M UTC' 2>/dev/null || echo '2025-01-21 18:00 UTC')** - Production deployment")
         
         echo "Created issue: $${ISSUE_URL}"
         
