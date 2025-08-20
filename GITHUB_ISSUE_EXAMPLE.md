@@ -44,16 +44,7 @@ Create detection rule with following logic:
 3. Alert on regular interval patterns (beaconing)
 4. Exclude known legitimate services
 
-### Recommended Query
-```kql
-event.category:network and 
-network.direction:outbound and 
-destination.ip:(
-  185.220.101.0/24 OR
-  194.147.78.0/24
-) and 
-network.bytes < 1024
-```
+**Note:** Detection engineer should develop appropriate KQL query based on these requirements and the threat intelligence provided.
 
 ### Test Data Available
 - PCAP from affected customer (see SecOps shared drive)
