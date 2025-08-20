@@ -115,8 +115,8 @@ git checkout -b feature/c2-beacon-detection
 
 # Export the rule from Kibana
 cd dac-demo-detection-rules
-python -m detection_rules kibana --space default export-rules \ 
-  --directory dac-demo/rules/ -custom-rules-only --strip-version
+python -m detection_rules kibana --space default export-rules \
+  --directory dac-demo/rules/ --custom-rules-only --strip-version
 
 # Commit and push
 git add .

@@ -276,9 +276,9 @@ ACTIVATE
   triggers = {
     repo_name = local.repo_name
   }
-}# Set up custom-rules directory structure in the forked repository
+}# Set up dac-demo directory structure in the forked repository
 
-resource "null_resource" "setup_custom_rules" {
+resource "null_resource" "setup_dac_demo_rules" {
   depends_on = [
     null_resource.clone_repository,
     data.github_repository.detection_rules # Repository must be accessible
@@ -295,30 +295,23 @@ resource "null_resource" "setup_custom_rules" {
       if [ -d "$${REPO_DIR}" ]; then
         cd "$${REPO_DIR}"
         
-        echo "Setting up custom-rules directory structure..."
+        echo "Setting up dac-demo directory structure for custom rules..."
         
-        # Create custom-rules directory structure
-        mkdir -p custom-rules/rules
+        # Create dac-demo directory structure - this is what GitHub Actions use
+        mkdir -p dac-demo/rules dac-demo/docs
         
-        # Create custom-rules configuration
-        cat > custom-rules/.detection-rules-cfg.json << 'CONFIG'
-{
-  "name": "custom-rules",
-  "custom_rules_dir": "custom-rules/rules"
-}
-CONFIG
-        
-        # Create README for custom-rules
-        cat > custom-rules/README.md << 'README'
-# Custom Detection Rules
+        # Create README for dac-demo
+        cat > dac-demo/README.md << 'README'
+# DAC Demo - Custom Detection Rules
 
-This directory contains custom detection rules specific to this organization.
+This directory contains custom detection rules for the Detection as Code demo.
 
 ## Directory Structure
 
 ```
-custom-rules/
+dac-demo/
 ├── rules/          # Your custom detection rules (TOML format)
+├── docs/           # Documentation for custom rules
 └── README.md       # This file
 ```
 
@@ -332,25 +325,27 @@ custom-rules/
 
 ```bash
 # Set up environment
-export CUSTOM_RULES_DIR=./custom-rules
+cd dac-demo-detection-rules
+source env/bin/activate
 
-# Validate custom rules
-python -m detection_rules validate-rule custom-rules/rules/*.toml
+# Export rules from Kibana
+python -m detection_rules kibana --space default export-rules \
+  --directory dac-demo/rules/ --custom-rules-only --strip-version
 
-# Run tests
-python -m detection_rules test custom-rules/rules/
+# Validate custom rules (if needed)
+python -m detection_rules validate-rule dac-demo/rules/*.toml
 ```
 
 ## Deployment Workflow
 
 ### Feature Branch → Development
 1. Create a feature branch: `git checkout -b feature/your-rule-name`
-2. Add your rule to `custom-rules/rules/`
+2. Add your rule to `dac-demo/rules/`
 3. Push to GitHub: `git push origin feature/your-rule-name`
-4. GitHub Actions automatically deploys to Development environment
+4. GitHub Actions automatically creates PR and deploys to Development
 
 ### Main Branch → Production
-1. Create a Pull Request from your feature branch to main
+1. Create a Pull Request from dev to main
 2. After PR approval and merge, GitHub Actions deploys to Production
 
 ## Rule Template
@@ -391,54 +386,8 @@ reference = "https://attack.mitre.org/techniques/T1059/"
 ```
 README
         
-        # Create an example custom rule
-        cat > custom-rules/rules/example-suspicious-process.toml << 'RULE'
-[metadata]
-creation_date = "$(date -u +%Y/%m/%d)"
-maturity = "development"
-updated_date = "$(date -u +%Y/%m/%d)"
-
-[rule]
-author = ["Custom Security Team"]
-description = """
-Example rule that detects suspicious PowerShell encoding activity.
-This is a demonstration rule for the DAC workflow.
-"""
-from = "now-6m"
-index = ["logs-*", "winlogbeat-*", "logs-windows.*"]
-language = "kuery"
-license = "Elastic License v2"
-name = "Example - Suspicious PowerShell Encoding"
-risk_score = 47
-rule_id = "$(uuidgen | tr '[:upper:]' '[:lower:]')"
-severity = "medium"
-tags = ["Custom", "PowerShell", "Windows", "Example"]
-timestamp_override = "event.ingested"
-type = "query"
-
-query = '''
-process.name: "powershell.exe" and process.args: ("-enc" or "-encodedcommand")
-'''
-
-[[rule.threat]]
-framework = "MITRE ATT&CK"
-[[rule.threat.technique]]
-id = "T1059"
-name = "Command and Scripting Interpreter"
-reference = "https://attack.mitre.org/techniques/T1059/"
-[[rule.threat.technique.subtechnique]]
-id = "T1059.001"
-name = "PowerShell"
-reference = "https://attack.mitre.org/techniques/T1059/001/"
-
-[rule.threat.tactic]
-id = "TA0002"
-name = "Execution"
-reference = "https://attack.mitre.org/tactics/TA0002/"
-RULE
-        
-        # Create .gitignore for custom-rules
-        cat > custom-rules/.gitignore << 'GITIGNORE'
+        # Create .gitignore for dac-demo
+        cat > dac-demo/.gitignore << 'GITIGNORE'
 # Temporary files
 *.tmp
 *.bak
@@ -460,19 +409,18 @@ __pycache__/
 *.swo
 GITIGNORE
         
-        # Commit the custom-rules structure
-        git add custom-rules/
-        git commit -m "feat: Initialize custom-rules directory structure
+        # Commit the dac-demo structure
+        git add dac-demo/
+        git commit -m "feat: Initialize dac-demo directory structure
 
-- Add custom-rules directory for organization-specific detection rules
-- Include example detection rule for PowerShell encoding
-- Add documentation and templates for custom rule development
-- Configure .detection-rules-cfg.json for custom rules management" || echo "Custom rules already committed"
+- Add dac-demo directory for organization-specific detection rules
+- This is the directory used by GitHub Actions workflows
+- Add documentation and templates for custom rule development" || echo "dac-demo already committed"
         
         # Push to origin
         git push origin main || echo "Failed to push, may need manual intervention"
         
-        echo "Custom-rules directory structure created successfully!"
+        echo "dac-demo directory structure created successfully!"
         
         # Create dev branch if it doesn't exist
         if ! git show-ref --verify --quiet refs/heads/dev; then
@@ -499,14 +447,13 @@ GITIGNORE
 output "custom_rules_info" {
   value = {
     repository        = "${var.github_owner}/${local.repo_name}"
-    custom_rules_path = "custom-rules/rules/"
-    example_rule      = "custom-rules/rules/example-suspicious-process.toml"
+    custom_rules_path = "dac-demo/rules/"
     workflows = {
-      dev_deployment  = ".github/workflows/deploy-to-dev.yml"
+      dev_deployment  = ".github/workflows/deploy-dev-to-development.yml"
       prod_deployment = ".github/workflows/deploy-to-prod.yml"
     }
   }
-  description = "Information about the custom rules setup"
+  description = "Information about the custom rules setup in dac-demo directory"
 
-  depends_on = [null_resource.setup_custom_rules]
+  depends_on = [null_resource.setup_dac_demo_rules]
 }
