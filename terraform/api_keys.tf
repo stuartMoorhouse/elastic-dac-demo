@@ -105,7 +105,8 @@ resource "null_resource" "create_dev_api_key" {
       fi
       
       # Combine ID and key in the format Elastic expects
-      ENCODED_API_KEY=$(printf "%s:%s" "$${API_KEY_ID}" "$${API_KEY_VALUE}" | base64)
+      # Use printf to avoid newline issues and ensure proper encoding
+      ENCODED_API_KEY=$(printf "%s:%s" "$${API_KEY_ID}" "$${API_KEY_VALUE}" | base64 | tr -d '\n')
       
       # Store the API key and Cloud ID in a local file (not in source control)
       mkdir -p ./elastic/credentials
@@ -190,7 +191,8 @@ resource "null_resource" "create_prod_api_key" {
       fi
       
       # Combine ID and key in the format Elastic expects
-      ENCODED_API_KEY=$(printf "%s:%s" "$${API_KEY_ID}" "$${API_KEY_VALUE}" | base64)
+      # Use printf to avoid newline issues and ensure proper encoding
+      ENCODED_API_KEY=$(printf "%s:%s" "$${API_KEY_ID}" "$${API_KEY_VALUE}" | base64 | tr -d '\n')
       
       # Store the API key and Cloud ID in a local file (not in source control)
       mkdir -p ./elastic/credentials

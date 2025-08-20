@@ -207,8 +207,13 @@ resource "null_resource" "clone_repository" {
         
         cd "$${TARGET_DIR}"
         
-        echo "NOT adding upstream remote - keeping fork independent..."
-        # We intentionally do not add upstream remote to keep the fork independent
+        echo "Removing upstream remote to prevent PR redirects..."
+        # Remove the upstream remote that GitHub automatically adds to prevent PRs going to elastic/detection-rules
+        git remote remove upstream 2>/dev/null || echo "No upstream remote to remove"
+        
+        # Verify we only have origin
+        echo "Current remotes:"
+        git remote -v
         
         echo "Creating custom content directory structure..."
         CUSTOM_DIR="${var.repo_name_prefix}"

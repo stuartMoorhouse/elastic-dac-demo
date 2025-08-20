@@ -162,6 +162,7 @@ After merging, the rule automatically deploys to Development. We can validate it
 
 **IMPORTANT: Creating PR within your fork via GitHub UI:**
 1. Go to your fork: `https://github.com/stuartMoorhouse/dac-demo-detection-rules`
+https://github.com/stuartMoorhouse/dac-demo-detection-rules/compare/main...dev?expand=1
 2. Click "Pull requests" tab (NOT the "Contribute" button)
 3. Click "New pull request"
 4. Change base repository from "elastic/detection-rules" to "stuartMoorhouse/dac-demo-detection-rules"
