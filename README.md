@@ -5,6 +5,19 @@ This project sets up a complete Elastic Security Detection as Code demo environm
 - A forked detection-rules repository with CI/CD workflows
 - Automated deployment pipelines for detection rules
 - GitHub integration for monitoring and deployment
+- **Automatic cleanup of 200+ unnecessary branches from the original repo**
+
+## Key Features
+
+### Clean Fork Management
+When Terraform creates your fork of elastic/detection-rules:
+- **Automatically removes 200+ branches** from the original repository
+- **Keeps only the `main` branch** for a clean starting point
+- **Creates a `dev` branch** for your development workflow
+- **No upstream remote** is added to maintain complete independence
+- Your GitHub UI stays clean and focused on your demo branches only
+
+This prevents the clutter of seeing hundreds of version-lock, feature, and experimental branches from the original Elastic repository in your fork.
 
 ## Prerequisites
 
