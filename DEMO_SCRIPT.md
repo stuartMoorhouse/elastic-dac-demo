@@ -8,12 +8,26 @@
 ---
 
 ## Pre-Demo Setup (Before Presentation)
+
+### Critical: Python Environment Setup (DO THIS FIRST - Takes 2+ minutes)
+```bash
+# IN THE dac-demo-detection-rules DIRECTORY:
+cd dac-demo-detection-rules
+python3 -m venv env
+source env/bin/activate
+pip install -e ".[dev]"
+pip install lib/kql lib/kibana
+
+# This installation takes 2+ minutes - MUST be done before demo starts!
+```
+
+### Demo Environment Checklist
 ```bash
 # Ensure all three Elastic instances are running
 # Have Kibana tabs open for Local, Dev and Production environments
 # Have GitHub repository page open
-# Terminal ready in dac-demo-detection-rules directory
-# Ensure detection-rules Python environment is activated
+# Terminal ready in dac-demo-detection-rules directory WITH environment activated
+# Verify Python environment is working: python -m detection_rules --help
 # Have two browser profiles/windows ready:
 #   - Main developer account (github_owner)
 #   - Detection team lead account (detection-team-lead)
@@ -101,9 +115,8 @@ git checkout -b feature/c2-beacon-detection
 
 # Export the rule from Kibana
 cd dac-demo-detection-rules
-python -m detection_rules kibana export-rules \
-  --rule-id c2-beacon-detection \
-  --directory dac-demo/rules/
+python -m detection_rules kibana --space default export-rules \ 
+  --directory dac-demo/rules/ -custom-rules-only --strip-version
 
 # Commit and push
 git add .
@@ -146,6 +159,19 @@ After merging, the rule automatically deploys to Development. We can validate it
 ### 6. Production Deployment (60 seconds)
 
 **Show:** Create PR from dev to main branch
+
+**IMPORTANT: Creating PR within your fork via GitHub UI:**
+1. Go to your fork: `https://github.com/stuartMoorhouse/dac-demo-detection-rules`
+2. Click "Pull requests" tab (NOT the "Contribute" button)
+3. Click "New pull request"
+4. Change base repository from "elastic/detection-rules" to "stuartMoorhouse/dac-demo-detection-rules"
+5. Select base: `main`, compare: `dev`
+6. Create the PR
+
+**Alternative: Direct URL for PR creation:**
+```
+https://github.com/stuartMoorhouse/dac-demo-detection-rules/compare/main...dev
+```
 
 **Highlight:**
 - Additional validation checks for production
