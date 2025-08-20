@@ -45,9 +45,54 @@ resource "null_resource" "create_fork" {
   }
 }
 
+# Clean up unnecessary branches from the fork
+# This removes all branches from elastic/detection-rules except main to keep the fork clean
+# The original repo has 200+ branches that aren't needed for the demo
+resource "null_resource" "cleanup_fork_branches" {
+  depends_on = [null_resource.create_fork]
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      set -e
+      echo "Cleaning up unnecessary branches from fork..."
+      echo "The original elastic/detection-rules has 200+ branches we don't need..."
+      
+      GITHUB_USER="${var.github_owner}"
+      REPO_NAME="${local.repo_name}"
+      
+      # Wait for fork to be fully ready
+      sleep 10
+      
+      echo "Fetching all branches from fork..."
+      # Count total branches first
+      TOTAL_BRANCHES=$(gh api repos/$${GITHUB_USER}/$${REPO_NAME}/branches --paginate | jq -r '.[].name' | wc -l)
+      echo "Found $${TOTAL_BRANCHES} branches in fork"
+      
+      # Delete all branches except main using GitHub API
+      gh api repos/$${GITHUB_USER}/$${REPO_NAME}/branches --paginate | \
+        jq -r '.[].name' | \
+        grep -v "^main$" | \
+        while read branch; do
+          echo "Deleting branch: $${branch}"
+          gh api -X DELETE "repos/$${GITHUB_USER}/$${REPO_NAME}/git/refs/heads/$${branch}" 2>/dev/null || true
+        done
+      
+      echo "Branch cleanup complete. Only 'main' branch remains."
+      echo "This keeps your fork clean and focused on the demo workflow."
+    EOT
+  }
+
+  triggers = {
+    repo_name = local.repo_name
+  }
+}
+
 # Enable GitHub Actions and Issues on the forked repository
 resource "null_resource" "enable_github_features" {
-  depends_on = [null_resource.create_fork]
+  depends_on = [
+    null_resource.create_fork,
+    null_resource.cleanup_fork_branches
+  ]
 
   provisioner "local-exec" {
     command = <<-EOT
@@ -98,7 +143,10 @@ resource "github_repository_collaborator" "detection_team_lead" {
 }
 
 resource "null_resource" "clone_repository" {
-  depends_on = [null_resource.create_fork]
+  depends_on = [
+    null_resource.create_fork,
+    null_resource.cleanup_fork_branches
+  ]
 
   provisioner "local-exec" {
     command = <<-EOT
@@ -116,14 +164,8 @@ resource "null_resource" "clone_repository" {
         
         cd "$${TARGET_DIR}"
         
-        echo "Adding upstream remote..."
-        git remote add upstream "https://github.com/elastic/detection-rules.git"
-        
-        echo "Fetching upstream..."
-        git fetch upstream
-        
-        echo "Setting upstream for main branch..."
-        git branch --set-upstream-to=upstream/main main
+        echo "NOT adding upstream remote - keeping fork independent..."
+        # We intentionally do not add upstream remote to keep the fork independent
         
         echo "Creating custom content directory structure..."
         CUSTOM_DIR="${var.repo_name_prefix}"
