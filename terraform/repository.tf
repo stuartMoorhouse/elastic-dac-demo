@@ -277,26 +277,38 @@ GUIDE
 - Add subdirectories for rules, docs, and workflows
 - Add documentation for custom content management"
         
-        echo "Setting up Python virtual environment..."
-        python3 -m venv env
+        echo "Setting up Python virtual environment (required for demo)..."
+        # Use Python 3.12 which is required by detection-rules
+        /opt/homebrew/bin/python3.12 -m venv env
         
-        echo "Installing dependencies..."
+        echo "Installing base dependencies..."
         ./env/bin/pip install --upgrade pip
-        ./env/bin/pip install .[dev]
-        ./env/bin/pip install lib/kql lib/kibana
         
-        echo "Building initial release and creating version lock..."
-        ./env/bin/python -m detection_rules dev build-release --update-version-lock
+        echo "Installing detection-rules package (this takes 2-3 minutes)..."
+        # Install in editable mode with dev dependencies
+        ./env/bin/pip install -e ".[dev]"
         
-        if [ -f "version.lock" ]; then
-          echo "Version lock created successfully"
-          git add version.lock
-          git commit -m "chore: Initialize version.lock for rule versioning
+        echo "Installing additional required libraries..."
+        # These are required for the detection-rules CLI to work
+        ./env/bin/pip install lib/kql
+        ./env/bin/pip install lib/kibana
+        
+        echo "Verifying installation..."
+        if ./env/bin/python -c "import detection_rules" 2>/dev/null; then
+          echo "✓ Detection rules package installed successfully"
           
-          - Create initial version.lock file
-          - Ensures consistent rule versions across deployments"
+          # Try to create version lock, but don't fail if it doesn't work
+          echo "Attempting to initialize version lock..."
+          ./env/bin/python -m detection_rules dev build-release --update-version-lock 2>/dev/null || echo "Note: Version lock will be created when rules are added"
+          
+          if [ -f "version.lock" ]; then
+            git add version.lock
+            git commit -m "chore: Initialize version.lock for rule versioning" 2>/dev/null || true
+          fi
         else
-          echo "Note: version.lock not created (may require rules to be present)"
+          echo "ERROR: Detection rules package installation failed!"
+          echo "The demo will not work without this. Please check Python dependencies."
+          exit 1
         fi
         
         echo "Creating activation helper script..."
