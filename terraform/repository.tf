@@ -45,19 +45,20 @@ resource "null_resource" "create_fork" {
   }
 }
 
-# Enable GitHub Actions on the forked repository
-resource "null_resource" "enable_github_actions" {
+# Enable GitHub Actions and Issues on the forked repository
+resource "null_resource" "enable_github_features" {
   depends_on = [null_resource.create_fork]
 
   provisioner "local-exec" {
     command = <<-EOT
       set -e
-      echo "Enabling GitHub Actions on the forked repository..."
+      echo "Configuring GitHub repository features..."
       
       # Wait a moment for the fork to be fully ready
       sleep 5
       
       # Enable GitHub Actions using gh CLI
+      echo "Enabling GitHub Actions..."
       gh api repos/${var.github_owner}/${local.repo_name}/actions/permissions \
         -X PUT \
         -H "Accept: application/vnd.github.v3+json" \
@@ -68,7 +69,13 @@ resource "null_resource" "enable_github_actions" {
       }
       EOF
       
-      echo "GitHub Actions enabled successfully!"
+      # Enable Issues
+      echo "Enabling GitHub Issues..."
+      gh api repos/${var.github_owner}/${local.repo_name} \
+        -X PATCH \
+        -f has_issues=true
+      
+      echo "GitHub features enabled successfully!"
     EOT
   }
 
