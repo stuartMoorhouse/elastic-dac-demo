@@ -107,3 +107,19 @@ variable "github_token" {
   type        = string
   sensitive   = true
 }
+
+variable "github_owner" {
+  description = "GitHub username or organization that owns the forked repository"
+  type        = string
+}
+
+variable "detection_team_lead_username" {
+  description = "GitHub username of the detection team lead who approves PRs"
+  type        = string
+}
+
+variable "detection_team_lead_token" {
+  description = "GitHub Personal Access Token for the detection team lead account"
+  type        = string
+  sensitive   = true
+}

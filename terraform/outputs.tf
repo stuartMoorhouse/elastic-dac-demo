@@ -65,7 +65,7 @@ output "github_repository_location" {
 }
 
 output "github_repository_url" {
-  value       = "https://github.com/$${data.external.github_user.result.login}/${local.repo_name}"
+  value       = "https://github.com/${var.github_owner}/${local.repo_name}"
   description = "GitHub URL of the forked repository"
   depends_on  = [null_resource.create_fork]
 }

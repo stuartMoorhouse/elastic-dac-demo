@@ -14,6 +14,9 @@
 # Have GitHub repository page open
 # Terminal ready in dac-demo-detection-rules directory
 # Ensure detection-rules Python environment is activated
+# Have two browser profiles/windows ready:
+#   - Main developer account (github_owner)
+#   - Detection team lead account (detection-team-lead)
 ```
 
 ---
@@ -119,10 +122,11 @@ Now I export the tested rule to Git. This starts our automated CI/CD pipeline.
 **Key points to highlight:**
 - Automatic PR creation after validation passes
 - Required status checks running
-- Review comment: "LGTM - critical coverage for active threat"
-- Approval given
+- **Switch to Detection Team Lead browser/profile**
+- Team Lead reviews: "LGTM - critical coverage for active threat"
+- Team Lead approves the PR
 
-The push automatically created a pull request to our dev branch. After validation passes, a teammate reviews and approves - the simple query is clear and effective.
+The push automatically created a pull request to our dev branch. After validation passes, our Detection Team Lead reviews and approves - the simple query is clear and effective for addressing the active threat.
 
 ---
 
@@ -146,7 +150,8 @@ After merging, the rule automatically deploys to Development. We can validate it
 **Highlight:**
 - Additional validation checks for production
 - Version lock update (automatic)
-- Required approvals
+- **Switch to Detection Team Lead browser/profile**
+- Team Lead provides production approval
 - Merge triggers production deployment
 
 **Show Production Kibana:**

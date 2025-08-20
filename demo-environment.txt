@@ -1,18 +1,18 @@
-┌─────────────┐           ┌─────────────┐           ┌─────────────┐
-│   LOCAL     │           │    GITHUB   │           │   ELASTIC   │
-│   MACHINE   │  push →   │    REPO     │  deploy → │   CLUSTERS  │
-│             │           │             │           │             │
-│ • Create    │           │ • CI/CD     │           │ • Dev       │
-│ • Export    │           │ • Actions   │           │ • Prod      │
-│ • Git push  │           │ • Branches  │           │             │
-└─────────────┘           └─────────────┘           └─────────────┘
-      │  ↑                        ↑                          ↑
-      │  │                        │                          │
-      │  └────────────────────────┘                          │
-      │         git push                            GitHub Actions
-      │                                                deploys
-      │ export
-      ↓
+┌─────────────┐           ┌─────────────┐            ┌─────────────┐
+│   LOCAL     │           │    GITHUB   │ - deploy → │     DEV     │
+│   MACHINE   │ - push →  │    REPO     │            │   ELASTIC   │
+│             │           │             │            │             │
+│ • Test      │           │ • Test      │            └─────────────┘
+│ • Document  │           │ • Approve   │            ┌─────────────┐
+│             │           │             │ - deploy → │    PROD     │
+└─────────────┘           └─────────────┘            │   ELASTIC   │
+      ↑                                              │             │
+      │                                              └─────────────┘
+      │                           
+      │                           
+      │                                            
+      │ export                                          
+      |
 ┌─────────────┐
 │    LOCAL    │
 │   ELASTIC   │
@@ -20,3 +20,6 @@
 │ • Test      │
 │ • Validate  │
 └─────────────┘
+
+
+

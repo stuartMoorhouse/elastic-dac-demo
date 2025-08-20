@@ -2,9 +2,7 @@ locals {
   repo_name = "${var.repo_name_prefix}-detection-rules"
 }
 
-data "external" "github_user" {
-  program = ["bash", "-c", "gh api user --jq '{login:.login}' | jq -c ."]
-}
+# GitHub owner is now defined as a variable instead of using external data source
 
 resource "null_resource" "create_fork" {
   provisioner "local-exec" {
@@ -12,7 +10,7 @@ resource "null_resource" "create_fork" {
       set -e
       echo "Creating fork of elastic/detection-rules as ${local.repo_name}..."
       
-      GITHUB_USER="${data.external.github_user.result.login}"
+      GITHUB_USER="${var.github_owner}"
       
       if gh repo view "$${GITHUB_USER}/${local.repo_name}" &>/dev/null; then
         echo "Repository ${local.repo_name} already exists"
@@ -30,7 +28,7 @@ resource "null_resource" "create_fork" {
       set -e
       echo "Cleaning up GitHub repository ${self.triggers.repo_name}..."
       
-      GITHUB_USER="$(gh api user --jq '.login')"
+      GITHUB_USER="${var.github_owner}"
       
       if gh repo view "$${GITHUB_USER}/${self.triggers.repo_name}" &>/dev/null; then
         echo "Deleting repository ${self.triggers.repo_name}..."
@@ -47,6 +45,18 @@ resource "null_resource" "create_fork" {
   }
 }
 
+# Add detection team lead as a collaborator with write access
+resource "github_repository_collaborator" "detection_team_lead" {
+  repository = local.repo_name
+  username   = var.detection_team_lead_username
+  permission = "write"  # Allows PR approvals but not admin access
+
+  depends_on = [
+    null_resource.create_fork,
+    data.github_repository.detection_rules
+  ]
+}
+
 resource "null_resource" "clone_repository" {
   depends_on = [null_resource.create_fork]
 
@@ -55,7 +65,7 @@ resource "null_resource" "clone_repository" {
       set -e
       REPO_NAME="${local.repo_name}"
       TARGET_DIR="../../$${REPO_NAME}"
-      GITHUB_USER="${data.external.github_user.result.login}"
+      GITHUB_USER="${var.github_owner}"
       
       if [ ! -d "$${TARGET_DIR}" ]; then
         echo "Waiting for fork to be available..."
@@ -198,7 +208,7 @@ resource "null_resource" "setup_custom_rules" {
       
       REPO_NAME="${local.repo_name}"
       REPO_DIR="../../$${REPO_NAME}"
-      GITHUB_USER="${data.external.github_user.result.login}"
+      GITHUB_USER="${var.github_owner}"
       
       if [ -d "$${REPO_DIR}" ]; then
         cd "$${REPO_DIR}"
@@ -406,7 +416,7 @@ GITIGNORE
 # Output information about custom rules setup
 output "custom_rules_info" {
   value = {
-    repository        = "${data.external.github_user.result.login}/${local.repo_name}"
+    repository        = "${var.github_owner}/${local.repo_name}"
     custom_rules_path = "custom-rules/rules/"
     example_rule      = "custom-rules/rules/example-suspicious-process.toml"
     workflows = {

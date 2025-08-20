@@ -8,23 +8,37 @@ This project sets up a complete Elastic Security Detection as Code demo environm
 
 ## Prerequisites
 
-### 1. GitHub Personal Access Token with SSO Authorization
+### 1. GitHub Accounts Required
+
+This demo requires **two GitHub accounts** to properly demonstrate the approval workflow:
+
+1. **Main Developer Account** (github_owner): Your primary GitHub account that owns the forked repository
+2. **Detection Team Lead Account** (detection-team-lead): A second GitHub account that approves pull requests
+   - This can be a secondary account you create for demo purposes
+   - Must have repository access (will be added as a collaborator automatically)
+
+### 2. GitHub Personal Access Tokens with SSO Authorization
 
 Since the Elastic organization requires SAML SSO authorization, you must configure your GitHub token **before** running Terraform:
 
-#### Step 1: Create a GitHub Personal Access Token
+#### Step 1: Create GitHub Personal Access Tokens
+
+**For BOTH accounts (main developer and detection team lead):**
+
 1. Go to https://github.com/settings/tokens
 2. Click "Generate new token" → "Generate new token (classic)"
 3. Select the following scopes:
-   - `repo` (full control of private repositories - **required for auto-PR creation**)
+   - `repo` (full control of private repositories - **required for PR operations**)
    - `workflow` (update GitHub Action workflows)
    - `read:org` (read org and team membership)
    - `write:packages` (optional, for package publishing)
 4. Generate the token and copy it
-5. **Important**: This token will be used both by Terraform AND as a GitHub Actions secret for automated PR creation
+5. **Important**: Save both tokens - you'll need them for Terraform configuration
 
-#### Step 2: Authorize Token for Elastic Organization (REQUIRED)
-**This step is mandatory for forking the elastic/detection-rules repository:**
+#### Step 2: Authorize Tokens for Elastic Organization (REQUIRED)
+**This step is mandatory for BOTH tokens to work with the elastic/detection-rules repository:**
+
+**For each token:**
 1. Go back to https://github.com/settings/tokens
 2. Find your newly created token
 3. Click "Configure SSO" next to the token
@@ -33,10 +47,10 @@ Since the Elastic organization requires SAML SSO authorization, you must configu
 
 ⚠️ **Important**: Without this authorization, the fork creation will fail with a "Resource protected by organization SAML enforcement" error.
 
-#### Step 3: Save Token for Terraform
-You'll add this token to your `terraform.tfvars` file in the setup steps below.
+#### Step 3: Save Tokens for Terraform
+You'll add both tokens to your `terraform.tfvars` file in the setup steps below.
 
-### 2. Elastic Cloud API Key
+### 3. Elastic Cloud API Key
 1. Log in to https://cloud.elastic.co
 2. Go to Features → API Keys
 3. Create a new API key with deployment management permissions
@@ -57,8 +71,16 @@ cp terraform.tfvars.example terraform.tfvars
 ```
 Edit `terraform.tfvars` and add your credentials:
 ```hcl
+# Elastic Cloud
 ec_api_key   = "your_elastic_cloud_api_key_here"
-github_token = "your_github_token_here"
+
+# GitHub identities
+github_owner = "your_github_username"  # Your main GitHub account
+github_token = "your_github_token_here"  # PAT for main account
+
+# Detection Team Lead (for PR approvals)
+detection_team_lead_username = "detection-team-lead"  # Second GitHub account
+detection_team_lead_token    = "team_lead_pat_here"  # PAT for team lead account
 ```
 
 ### 3. Initialize Terraform

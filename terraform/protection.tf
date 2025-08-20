@@ -1,6 +1,6 @@
 # Data source to get repository information after fork is created
 data "github_repository" "detection_rules" {
-  full_name = "${data.external.github_user.result.login}/${local.repo_name}"
+  full_name = "${var.github_owner}/${local.repo_name}"
 
   depends_on = [
     null_resource.create_fork,
@@ -36,6 +36,9 @@ resource "github_branch_protection" "main" {
     dismiss_stale_reviews           = true
     require_code_owner_reviews      = false
     required_approving_review_count = 1
+    pull_request_bypassers          = []
+    restrict_dismissals             = true
+    dismissal_restrictions          = [var.detection_team_lead_username]
   }
 
   enforce_admins                  = true

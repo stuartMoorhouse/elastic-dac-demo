@@ -252,7 +252,7 @@ resource "null_resource" "update_github_secrets" {
         exit 1
       fi
       
-      GITHUB_USER="${data.external.github_user.result.login}"
+      GITHUB_USER="${var.github_owner}"
       REPO_NAME="${local.repo_name}"
       
       # Create or update GitHub secrets for Development
@@ -268,6 +268,10 @@ resource "null_resource" "update_github_secrets" {
       # Set GitHub Personal Access Token for auto-PR creation
       echo "Setting GitHub PAT for auto-PR creation..."
       gh secret set GH_PAT --body "${var.github_token}" --repo "$${GITHUB_USER}/$${REPO_NAME}"
+      
+      # Set Detection Team Lead PAT for PR approvals
+      echo "Setting Detection Team Lead PAT for PR approvals..."
+      gh secret set TEAM_LEAD_PAT --body "${var.detection_team_lead_token}" --repo "$${GITHUB_USER}/$${REPO_NAME}"
       
       # Clean up temp files
       rm -f /tmp/dev_elastic_api_key.txt /tmp/dev_elastic_cloud_id.txt
