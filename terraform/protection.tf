@@ -48,14 +48,16 @@ resource "github_branch_protection" "main" {
   require_conversation_resolution = true # Ensure all PR comments are resolved
   require_signed_commits          = false
 
-  # CRITICAL: Apply branch protection AFTER workflows and PR template are created
+  # CRITICAL: Apply branch protection AFTER workflows are created AND after
+  # inherited workflows are cleaned up — otherwise protection blocks the cleanup.
   depends_on = [
     github_repository_file.feature_branch_workflow,
     github_repository_file.main_branch_workflow,
     github_repository_file.dev_branch_deploy_workflow,
     github_repository_file.pr_validation_workflow,
-    github_repository_file.pr_template, # Create PR template before protection
-    github_branch.dev
+    github_repository_file.pr_template,
+    github_branch.dev,
+    null_resource.cleanup_inherited_workflows
   ]
 }
 
@@ -73,13 +75,14 @@ resource "github_branch_protection" "dev" {
   allows_deletions    = false
   allows_force_pushes = false
 
-  # Apply after workflows and PR template are created
+  # Apply after workflows, PR template, and inherited-workflow cleanup.
   depends_on = [
     github_branch.dev,
     github_repository_file.feature_branch_workflow,
     github_repository_file.main_branch_workflow,
     github_repository_file.dev_branch_deploy_workflow,
-    github_repository_file.pr_template # Create PR template before protection
+    github_repository_file.pr_template,
+    null_resource.cleanup_inherited_workflows
   ]
 }
 

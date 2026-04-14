@@ -1,101 +1,78 @@
-# Remove inherited GitHub Actions workflows from the Elastic detection-rules repository
-# These cause confusing failures in the fork
+# Remove inherited GitHub Actions workflows from the Elastic detection-rules repository.
+# These cause confusing failures in the fork (missing secrets like
+# WRITE_TRADEBOT_GIST_TOKEN, dr_cloud_id) and spam the owner with failure emails.
+#
+# We delete directly via the GitHub Contents API on both main and dev so the
+# remote state is authoritative and we don't fight branch-protection on git push.
 
 resource "null_resource" "cleanup_inherited_workflows" {
+  # Run BEFORE branch protection is applied so DELETE isn't blocked.
+  # Must run AFTER fork creation and AFTER the dev branch exists (we clean both).
   depends_on = [
+    null_resource.create_fork,
     null_resource.clone_repository,
-    null_resource.setup_dac_demo_rules
+    github_branch.dev
   ]
 
   provisioner "local-exec" {
     command = <<-EOT
       set -e
-      
-      REPO_DIR="../../${local.repo_name}"
-      
-      echo "Cleaning up inherited GitHub Actions workflows from Elastic..."
-      
-      if [ -d "$${REPO_DIR}/.github/workflows" ]; then
-        cd "$${REPO_DIR}"
-        
-        # List of workflows to remove that come from Elastic and cause issues
-        WORKFLOWS_TO_REMOVE=(
-          "add-comment.yml"           # Adds PR guidelines comment
-          "label-pr.yml"              # Community labeling
-          "pr-label.yml"              # Another labeling workflow
-          "community-label.yml"       # Community label workflow
-          "osquery-validation.yml"    # OSQuery validation we don't need
-          "stats-release.yml"         # Stats release workflow
-        )
-        
-        for workflow in "$${WORKFLOWS_TO_REMOVE[@]}"; do
-          if [ -f ".github/workflows/$${workflow}" ]; then
-            echo "Removing inherited workflow: $${workflow}"
-            rm -f ".github/workflows/$${workflow}"
-          fi
-        done
-        
-        # Check if there are any remaining workflows that might cause issues
-        echo "Checking for other potentially problematic workflows..."
-        
-        # Remove any workflow that references elastic organization specifics
-        for workflow in .github/workflows/*.yml .github/workflows/*.yaml; do
-          if [ -f "$${workflow}" ]; then
-            # Check if it's one of our custom workflows (keep these)
-            if ! grep -q "dac-demo" "$${workflow}" && \
-               ! grep -q "deploy-to-prod" "$${workflow}" && \
-               ! grep -q "deploy-dev-to-development" "$${workflow}" && \
-               ! grep -q "feature-branch-validate" "$${workflow}" && \
-               ! grep -q "pr-validate" "$${workflow}" && \
-               ! grep -q "rollback" "$${workflow}" && \
-               ! grep -q "auto-rollback" "$${workflow}"; then
-              # Check if it references elastic-specific resources
-              if grep -q "elastic/detection-rules" "$${workflow}" || \
-                 grep -q "ELASTIC_" "$${workflow}" || \
-                 grep -q "elastic-ci" "$${workflow}" || \
-                 grep -q "add-comment" "$${workflow}" || \
-                 grep -q "label" "$${workflow}"; then
-                echo "Removing elastic-specific workflow: $(basename $${workflow})"
-                rm -f "$${workflow}"
-              fi
-            fi
-          fi
-        done
-        
-        # Commit the cleanup if there are changes
-        if git status --porcelain | grep -q "^D"; then
-          echo "Committing workflow cleanup..."
-          git add -A
-          git commit -m "chore: Remove inherited Elastic workflows that cause PR failures
 
-- Remove add-comment.yml that tries to add boilerplate
-- Remove labeling workflows specific to Elastic's process
-- Keep only DAC demo specific workflows"
-          
-          # Push to all relevant branches
-          echo "Pushing cleanup to main branch..."
-          git push origin main || echo "Note: May need to push via PR due to branch protection"
-          
-          # Also push to dev branch if it exists
-          if git show-ref --verify --quiet refs/heads/dev; then
-            git checkout dev
-            git merge main -m "Merge workflow cleanup from main"
-            git push origin dev
-            git checkout main
-          fi
-        else
-          echo "No workflows needed cleanup"
+      OWNER="${var.github_owner}"
+      REPO="${local.repo_name}"
+      export GH_TOKEN="${var.github_token}"
+
+      KEEP_WORKFLOWS="deploy-to-prod.yml deploy-dev-to-development.yml feature-branch-validate.yml pr-validate.yml rollback-rules.yml auto-rollback.yml"
+
+      cleanup_branch() {
+        local branch="$1"
+        echo "Cleaning inherited workflows on branch: $${branch}"
+
+        # Does the branch exist on the remote?
+        if ! gh api "repos/$${OWNER}/$${REPO}/branches/$${branch}" >/dev/null 2>&1; then
+          echo "  Branch $${branch} does not exist on remote, skipping"
+          return 0
         fi
-      else
-        echo "No .github/workflows directory found"
-      fi
-      
+
+        # Does the workflows dir exist on this branch?
+        local listing
+        listing=$(gh api "repos/$${OWNER}/$${REPO}/contents/.github/workflows?ref=$${branch}" 2>/dev/null || echo "")
+        if [ -z "$${listing}" ] || [ "$${listing}" = "null" ]; then
+          echo "  No .github/workflows on $${branch}, skipping"
+          return 0
+        fi
+
+        local removed=0
+        echo "$${listing}" | jq -r '.[] | select(.type=="file") | [.name, .path, .sha] | @tsv' | while IFS=$'\t' read -r name path sha; do
+          case " $${KEEP_WORKFLOWS} " in
+            *" $${name} "*)
+              continue
+              ;;
+          esac
+          echo "  Deleting inherited workflow on $${branch}: $${name}"
+          gh api -X DELETE "repos/$${OWNER}/$${REPO}/contents/$${path}" \
+            -f message="chore: remove inherited $${name} (not used by DAC demo)" \
+            -f sha="$${sha}" \
+            -f branch="$${branch}" >/dev/null 2>&1 || {
+              echo "    WARN: DELETE failed for $${name} on $${branch} (likely branch protection). Skipping."
+            }
+          removed=$((removed + 1))
+        done
+
+        echo "  Done with $${branch}"
+      }
+
+      cleanup_branch main
+      cleanup_branch dev
+
       echo "Workflow cleanup complete!"
     EOT
   }
 
+  # Bootstrap-only: re-run only when the fork itself is (re)created. Once the
+  # inherited workflows are gone they stay gone, and we don't want to fight
+  # branch protection on every subsequent apply.
   triggers = {
-    repo_name = local.repo_name
-    timestamp = timestamp() # Force re-run each time
+    fork_id = null_resource.create_fork.id
   }
 }
