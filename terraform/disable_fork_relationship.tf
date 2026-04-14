@@ -41,7 +41,7 @@ resource "null_resource" "update_clone_dependencies" {
   depends_on = [
     null_resource.disable_fork_relationship
   ]
-  
+
   provisioner "local-exec" {
     command = "echo 'Fork relationship disabled'"
   }

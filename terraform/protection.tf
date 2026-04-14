@@ -54,7 +54,7 @@ resource "github_branch_protection" "main" {
     github_repository_file.main_branch_workflow,
     github_repository_file.dev_branch_deploy_workflow,
     github_repository_file.pr_validation_workflow,
-    github_repository_file.pr_template,  # Create PR template before protection
+    github_repository_file.pr_template, # Create PR template before protection
     github_branch.dev
   ]
 }
@@ -79,7 +79,7 @@ resource "github_branch_protection" "dev" {
     github_repository_file.feature_branch_workflow,
     github_repository_file.main_branch_workflow,
     github_repository_file.dev_branch_deploy_workflow,
-    github_repository_file.pr_template  # Create PR template before protection
+    github_repository_file.pr_template # Create PR template before protection
   ]
 }
 
@@ -109,7 +109,7 @@ output "branch_protection_summary" {
     github_branch_protection.main,
     github_branch_protection.dev
   ]
-}# Pull Request Validation Workflow
+} # Pull Request Validation Workflow
 # This workflow runs when PRs are opened to main branch
 # Provides the "validate-rules" status check required for merging
 

@@ -3,7 +3,7 @@
 
 resource "github_repository_file" "dev_branch_deploy_workflow" {
   repository = data.github_repository.detection_rules.name
-  branch     = "main"  # Workflows must be on main branch to work properly
+  branch     = "main" # Workflows must be on main branch to work properly
   file       = ".github/workflows/deploy-dev-to-development.yml"
 
   depends_on = [

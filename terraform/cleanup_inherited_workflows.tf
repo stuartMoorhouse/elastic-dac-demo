@@ -96,6 +96,6 @@ resource "null_resource" "cleanup_inherited_workflows" {
 
   triggers = {
     repo_name = local.repo_name
-    timestamp = timestamp()  # Force re-run each time
+    timestamp = timestamp() # Force re-run each time
   }
 }

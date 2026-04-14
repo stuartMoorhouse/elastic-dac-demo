@@ -35,7 +35,7 @@ variable "deployment_name_production" {
 variable "deployment_name_development" {
   description = "Name for the development Elastic Cloud deployment"
   type        = string
-  default     = "elastic-cloud-development"
+  default     = "elastic-cloud-dev-env"
 }
 
 variable "deployment_name_local" {
@@ -69,7 +69,7 @@ variable "elasticsearch_zone_count" {
 variable "kibana_size" {
   description = "Size of Kibana instances (in GB RAM)"
   type        = string
-  default     = "2g"
+  default     = "16g"
 }
 
 variable "kibana_zone_count" {

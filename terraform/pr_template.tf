@@ -3,7 +3,7 @@ resource "github_repository_file" "pr_template" {
   repository = data.github_repository.detection_rules.name
   branch     = data.github_repository.detection_rules.default_branch
   file       = ".github/pull_request_template.md"
-  
+
   content = <<-EOT
 ## Summary
 
@@ -34,12 +34,12 @@ Resolves #
 EOT
 
   commit_message = "chore: Add simplified PR template for Detection as Code workflow"
-  
+
   depends_on = [
     null_resource.setup_dac_demo_rules,
-    github_branch.dev  # Create after dev branch exists
+    github_branch.dev # Create after dev branch exists
   ]
-  
+
   # This file should be created BEFORE branch protection
   # so we need to ensure branch protection depends on this
 }

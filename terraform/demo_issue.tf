@@ -116,8 +116,8 @@ Create detection rule with following logic:
 
 # Output the demo issue URL
 output "demo_issue_url" {
-  value = "https://github.com/${var.github_owner}/${local.repo_name}/issues"
+  value       = "https://github.com/${var.github_owner}/${local.repo_name}/issues"
   description = "URL to the GitHub issues page with the demo C2 detection issue"
-  
+
   depends_on = [null_resource.create_demo_issue]
 }

@@ -12,11 +12,16 @@
 ### Critical: Python Environment Setup (DO THIS FIRST - Takes 2+ minutes)
 ```bash
 # IN THE dac-demo-detection-rules DIRECTORY:
-cd dac-demo-detection-rules
-python3 -m venv env
-source env/bin/activate
-pip install -e ".[dev]"
-pip install lib/kql lib/kibana
+  cd dac-demo-detection-rules
+  python3 -m venv env
+  source env/bin/activate
+  # Extract required Python version from pyproject.toml and check
+  REQ_PYTHON=$(python -c "import toml; 
+  print(toml.load('pyproject.toml')['project']['requires-python'].replace('>=',''))")
+  python -c "import sys; req=tuple(map(int,'$REQ_PYTHON'.split('.'))); exit(0 if sys.version_info[:2] >=
+   req else 1)" || (echo "Error: Python $REQ_PYTHON+ required, got $(python --version)" && exit 1)
+  pip install -e ".[dev]"
+  pip install lib/kql lib/kibana
 
 # This installation takes 2+ minutes - MUST be done before demo starts!
 ```
@@ -130,7 +135,7 @@ Now I export the tested rule to Git. This starts our automated CI/CD pipeline.
 
 ### 4. Peer Review (60 seconds)
 
-**Show:** GitHub PR automatically created to dev branch
+**Show:** Create PR 
 
 **Key points to highlight:**
 - Automatic PR creation after validation passes

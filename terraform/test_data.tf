@@ -338,19 +338,19 @@ resource "null_resource" "create_test_data" {
   }
 
   triggers = {
-    dev_deployment_id = ec_deployment.development.id
+    dev_deployment_id   = ec_deployment.development.id
     local_deployment_id = ec_deployment.local.id
-    timestamp         = timestamp()
+    timestamp           = timestamp()
   }
 }
 
 # Output information about test data
 output "test_data_info" {
   value = {
-    data_stream_name = "logs-network_traffic"
+    data_stream_name    = "logs-network_traffic"
     data_stream_pattern = "logs-network_traffic"
-    clusters_loaded = ["Development", "Local"]
-    query_example = <<-QUERY
+    clusters_loaded     = ["Development", "Local"]
+    query_example       = <<-QUERY
       # Query to find C2 beacons (what your rule should detect):
       event.category:network and 
       network.direction:outbound and 
@@ -369,18 +369,18 @@ output "test_data_info" {
       ]
       legitimate_ips = [
         "142.250.185.46 (Google)",
-        "52.88.151.22 (AWS)", 
+        "52.88.151.22 (AWS)",
         "13.107.42.14 (Microsoft)",
         "172.217.16.142 (Google)",
         "20.190.159.70 (Azure)",
         "151.101.1.140 (Fastly CDN)",
         "104.18.14.101 (Cloudflare)"
       ]
-      expected_alerts = "10 (C2 beacons with <1KB, excludes backup_service and security_scanner)"
+      expected_alerts          = "10 (C2 beacons with <1KB, excludes backup_service and security_scanner)"
       expected_false_positives = "0 (legitimate traffic has larger payloads or excluded users)"
     }
   }
   description = "ECS-compliant test data loaded into both Development and Local clusters for C2 detection demo"
-  
+
   depends_on = [null_resource.create_test_data]
 }

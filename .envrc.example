@@ -1,0 +1,7 @@
+# Copy this file to .envrc and fill in real values, then run `direnv allow`.
+# direnv will export these into your shell whenever you cd into this repo.
+# Terraform picks up any TF_VAR_<name> env var as input variable <name>.
+
+export TF_VAR_ec_api_key="$REPLACE_WITH_ELASTIC_CLOUD_API_KEY"
+export TF_VAR_github_token="$REPLACE_WITH_GITHUB_PAT"
+export TF_VAR_detection_team_lead_token="$REPLACE_WITH_DETECTION_LEAD_PAT"

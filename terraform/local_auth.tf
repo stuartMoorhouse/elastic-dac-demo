@@ -75,7 +75,7 @@ resource "null_resource" "generate_elastic_api_key" {
 resource "null_resource" "write_detection_rules_config" {
   depends_on = [
     null_resource.generate_elastic_api_key,
-    null_resource.clone_repository  # Add dependency on clone to ensure repo exists
+    null_resource.clone_repository # Add dependency on clone to ensure repo exists
   ]
 
   provisioner "local-exec" {

@@ -1,0 +1,18 @@
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Filesystem paths that are gitignored and Terraform-variable curl auth references (not literal secrets)"
+paths = [
+  '''^state/''',
+  '''^terraform/\.terraform/''',
+  '''^terraform/terraform\.tfstate(\..*)?$''',
+  '''^terraform/.*\.tfstate\.backup$''',
+  '''^terraform/elastic/credentials/''',
+  '''\.envrc$''',
+  '''^terraform/terraform\.tfvars$''',
+]
+regexes = [
+  '''\$\{[^}]*elasticsearch_password[^}]*\}''',
+  '''\$\$\{[A-Z_]*(USERNAME|PASSWORD|TOKEN|KEY)[A-Z_]*\}''',
+]

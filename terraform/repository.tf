@@ -83,8 +83,8 @@ resource "null_resource" "create_fork" {
   }
 
   triggers = {
-    repo_name = local.repo_name
-    github_owner = var.github_owner  # Store it in triggers so it's available during destroy
+    repo_name    = local.repo_name
+    github_owner = var.github_owner # Store it in triggers so it's available during destroy
   }
 }
 
@@ -177,7 +177,7 @@ resource "null_resource" "enable_github_features" {
 resource "github_repository_collaborator" "detection_team_lead" {
   repository = local.repo_name
   username   = var.detection_team_lead_username
-  permission = "write"  # Allows PR approvals but not admin access
+  permission = "write" # Allows PR approvals but not admin access
 
   depends_on = [
     null_resource.create_fork,

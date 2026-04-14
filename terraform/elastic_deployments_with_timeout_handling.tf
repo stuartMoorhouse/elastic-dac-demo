@@ -5,7 +5,7 @@
 resource "null_resource" "elastic_deployment_handler" {
   # This will run AFTER the ec_deployment resources attempt to create
   # It handles the timeout issue by waiting and refreshing state
-  
+
   provisioner "local-exec" {
     command = <<-EOT
       set -e
@@ -30,14 +30,14 @@ resource "null_resource" "elastic_deployment_handler" {
       fi
     EOT
   }
-  
+
   # Run this after attempting to create the deployments
   depends_on = [
     ec_deployment.local,
     ec_deployment.development,
     ec_deployment.production
   ]
-  
+
   # Force this to run each time
   triggers = {
     always_run = timestamp()
@@ -65,11 +65,11 @@ resource "null_resource" "validate_deployments" {
       fi
     EOT
   }
-  
+
   depends_on = [
     null_resource.elastic_deployment_handler
   ]
-  
+
   triggers = {
     always_run = timestamp()
   }
@@ -85,7 +85,7 @@ resource "ec_deployment" "local" {
   elasticsearch = {
     hot = {
       size        = var.elasticsearch_size
-      zone_count  = var.elasticsearch_zone_count
+      zone_count  = 3 # Changed to 3 nodes for better reliability
       autoscaling = {}
     }
   }
@@ -105,7 +105,7 @@ resource "ec_deployment" "local" {
     purpose     = "dac-demo"
     managed_by  = "terraform"
   }
-  
+
   # Note: This will timeout after ~2 minutes but continue creating in background
   # The null_resource.elastic_deployment_handler will handle this
 }
@@ -119,7 +119,7 @@ resource "ec_deployment" "development" {
   elasticsearch = {
     hot = {
       size        = var.elasticsearch_size
-      zone_count  = var.elasticsearch_zone_count
+      zone_count  = 3 # Changed to 3 nodes for better reliability
       autoscaling = {}
     }
   }
@@ -150,7 +150,7 @@ resource "ec_deployment" "production" {
   elasticsearch = {
     hot = {
       size        = var.elasticsearch_size
-      zone_count  = var.elasticsearch_zone_count
+      zone_count  = 3 # Changed to 3 nodes for better reliability
       autoscaling = {}
     }
   }

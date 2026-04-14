@@ -61,13 +61,13 @@ Since the Elastic organization requires SAML SSO authorization, you must configu
 ⚠️ **Important**: Without this authorization, the fork creation will fail with a "Resource protected by organization SAML enforcement" error.
 
 #### Step 3: Save Tokens for Terraform
-You'll add both tokens to your `terraform.tfvars` file in the setup steps below.
+You'll add both tokens to your `.envrc` file in the setup steps below. Secrets are kept out of `terraform.tfvars` and exported as `TF_VAR_*` environment variables via [direnv](https://direnv.net/) so they never sit in a tracked file.
 
 ### 3. Elastic Cloud API Key
 1. Log in to https://cloud.elastic.co
 2. Go to Features → API Keys
 3. Create a new API key with deployment management permissions
-4. Save this key - you'll add it to your `terraform.tfvars` file in the setup steps below
+4. Save this key - you'll add it to your `.envrc` file in the setup steps below
 
 ## Setup Instructions
 
@@ -77,24 +77,36 @@ git clone <this-repo>
 cd elastic-dac-demo
 ```
 
-### 2. Configure Terraform variables
+### 2. Configure secrets (`.envrc`) and non-secret variables (`terraform.tfvars`)
+
+Secrets are exported as `TF_VAR_*` environment variables via [direnv](https://direnv.net/) so they're never written to a tracked file. Non-secret config (your GitHub username, Elastic version, etc.) stays in `terraform.tfvars`.
+
+**One-time setup:**
 ```bash
+brew install direnv
+echo 'eval "$(direnv hook zsh)"' >> ~/.zshrc   # or ~/.bashrc for bash
+exec $SHELL
+```
+
+**Per-clone setup:**
+```bash
+# Secrets — never committed (.envrc is gitignored)
+cp .envrc.example .envrc
+# Edit .envrc and paste in your real tokens
+direnv allow .
+
+# Non-secret config
 cd terraform
 cp terraform.tfvars.example terraform.tfvars
+# Edit terraform.tfvars (github_owner, detection_team_lead_username, etc.)
 ```
-Edit `terraform.tfvars` and add your credentials:
-```hcl
-# Elastic Cloud
-ec_api_key   = "your_elastic_cloud_api_key_here"
 
-# GitHub identities
-github_owner = "your_github_username"  # Your main GitHub account
-github_token = "your_github_token_here"  # PAT for main account
+After `direnv allow`, every time you `cd` into the repo your shell will export:
+- `TF_VAR_ec_api_key`
+- `TF_VAR_github_token`
+- `TF_VAR_detection_team_lead_token`
 
-# Detection Team Lead (for PR approvals)
-detection_team_lead_username = "detection-team-lead"  # Second GitHub account
-detection_team_lead_token    = "team_lead_pat_here"  # PAT for team lead account
-```
+Terraform automatically picks up any `TF_VAR_<name>` env var as input variable `<name>`.
 
 ### 3. Initialize Terraform
 ```bash
@@ -121,11 +133,12 @@ This will:
 - Set up rollback capabilities for emergency recovery
 - Initialize version.lock for rule versioning
 - Store credentials securely (not in source control)
+- Open a demo GitHub issue (`[CRITICAL] Detection Gap - New C2 Infrastructure`) used as the starting point of the demo narrative
 
 ## Customization
 
 ### Repository Name Prefix
-You can customize the forked repository name in your `terraform.tfvars` file:
+You can customize the forked repository name in your `terraform.tfvars` file (this is a non-secret value, so it goes in `terraform.tfvars`, not `.envrc`):
 ```hcl
 repo_name_prefix = "my-custom-prefix"  # Creates: my-custom-prefix-detection-rules
 ```
