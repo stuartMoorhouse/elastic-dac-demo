@@ -57,7 +57,8 @@ resource "github_branch_protection" "main" {
     github_repository_file.pr_validation_workflow,
     github_repository_file.pr_template,
     github_branch.dev,
-    null_resource.cleanup_inherited_workflows
+    null_resource.cleanup_inherited_workflows,
+    null_resource.cleanup_inherited_pr_template
   ]
 }
 
@@ -90,7 +91,8 @@ resource "github_branch_protection" "dev" {
     github_repository_file.main_branch_workflow,
     github_repository_file.dev_branch_deploy_workflow,
     github_repository_file.pr_template,
-    null_resource.cleanup_inherited_workflows
+    null_resource.cleanup_inherited_workflows,
+    null_resource.cleanup_inherited_pr_template
   ]
 }
 

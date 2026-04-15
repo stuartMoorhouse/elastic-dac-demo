@@ -41,6 +41,14 @@
 ---
 
 ## Demo Steps
+In dac-demo-detection-rules: 
+
+# Switch to dev and pull latest before branching
+# (feature branch MUST be based on dev, not main — otherwise the
+# PR will include workflow-file drift between main and dev)
+git checkout dev
+git pull origin dev
+
 
 ### 1. Planning & Prioritization (30 seconds)
 
@@ -87,14 +95,8 @@ Context: Supply chain compromise campaign
 
 **In Kibana UI:**
 1. Click "Create new rule" → "Custom query"
-2. **Fill in the rule details:**
-   - Name: "Outbound C2 Beacon Activity to Known Malicious Infrastructure"
-   - Description: "Detects beaconing behavior from known malicious IPs"
-   - Severity: Critical
-   - Risk score: 90
 
-3. **Define the query:**
-```kql
+2. **Define the query:**
 event.category:network and 
 network.direction:outbound and 
 destination.ip:(
@@ -104,6 +106,11 @@ destination.ip:(
 network.bytes < 1024 and
 not user.name:(security_scanner or backup_service)
 
+3. **Fill in the rule details:**
+   - Name: "Outbound C2 Beacon Activity to Known Malicious Infrastructure"
+   - Description: "Detects beaconing behavior from known malicious IPs"
+   - Severity: Critical
+   - Risk score: 90
 
 ```
 
@@ -117,12 +124,6 @@ not user.name:(security_scanner or backup_service)
 In dac-demo-detection-rules:
 
 ```bash
-# Switch to dev and pull latest before branching
-# (feature branch MUST be based on dev, not main — otherwise the
-# PR will include workflow-file drift between main and dev)
-git checkout dev
-git pull origin dev
-
 # Create feature branch off dev
 git checkout -b feature/c2-beacon-detection
 

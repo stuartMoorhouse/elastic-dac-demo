@@ -200,7 +200,14 @@ if [[ -d "${CLONE_DIR}/.git" ]]; then
   for b in $(git branch --format='%(refname:short)' | grep -vE '^(main|dev)$'); do
     git branch -D "${b}" >/dev/null 2>&1 && echo "  deleted local branch ${b}" || true
   done
-  git clean -fdx >/dev/null 2>&1
+  # Preserve infra-owned files (written by terraform, not by the demo):
+  #   .env, .detection-rules-cfg*  — Local cluster credentials / API key
+  #   env/                         — Python venv (2+ min to rebuild)
+  git clean -fdx \
+    -e .env \
+    -e '.detection-rules-cfg*' \
+    -e env \
+    >/dev/null 2>&1
   cd "${SCRIPT_DIR}"
 else
   echo "  local clone not found at ${CLONE_DIR}; skipping local reset"
