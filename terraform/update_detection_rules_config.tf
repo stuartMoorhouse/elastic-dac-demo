@@ -23,15 +23,29 @@ resource "null_resource" "always_update_detection_rules_config" {
       LOCAL_KIBANA_URL="${ec_deployment.local.kibana.https_endpoint}"
       LOCAL_ES_URL="${ec_deployment.local.elasticsearch.https_endpoint}"
       LOCAL_PASSWORD="${ec_deployment.local.elasticsearch_password}"
-      
-      # Create the configuration file with current credentials
+
+      # The detection-rules CLI only supports api_key auth for Kibana (kibana_username/password are ignored),
+      # so mint a fresh Elasticsearch API key here and write it into the config file.
+      API_KEY_RESPONSE=$(curl -sf -X POST \
+        -u "elastic:$${LOCAL_PASSWORD}" \
+        -H "Content-Type: application/json" \
+        "$${LOCAL_ES_URL}/_security/api_key" \
+        -d '{"name":"detection-rules-cli","metadata":{"created_by":"terraform","purpose":"detection-rules CLI auth"}}')
+
+      LOCAL_ENCODED_API_KEY=$(printf '%s' "$${API_KEY_RESPONSE}" | jq -r '.encoded')
+
+      if [ -z "$${LOCAL_ENCODED_API_KEY}" ] || [ "$${LOCAL_ENCODED_API_KEY}" = "null" ]; then
+        echo "ERROR: Failed to generate API key for detection-rules CLI. Response: $${API_KEY_RESPONSE}"
+        exit 1
+      fi
+
+      # Create the configuration file with the minted API key
       cat > "$${CONFIG_FILE}" << EOF
 {
   "custom_rules_dir": "dac-demo",
   "kibana_url": "$${LOCAL_KIBANA_URL}",
   "elasticsearch_url": "$${LOCAL_ES_URL}",
-  "kibana_username": "elastic",
-  "kibana_password": "$${LOCAL_PASSWORD}"
+  "api_key": "$${LOCAL_ENCODED_API_KEY}"
 }
 EOF
       

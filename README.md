@@ -286,6 +286,10 @@ Feature Branch          Dev Branch              Main Branch
 - Automatically validates custom rules
 - **NEW**: If validation passes, automatically creates PR to `dev` branch
 - No manual PR creation needed for the first stage
+- **PR must be within your fork:** `base: dev` ← `compare: feature/<branch-name>`
+  Direct URL: `https://github.com/<your-username>/dac-demo-detection-rules/compare/dev...feature/<branch-name>?expand=1`
+
+> **Important:** GitHub's "Compare & pull request" banner on a fork points at the upstream `elastic/detection-rules` repo by default. If you create the PR manually, change the **base repository** dropdown to your own fork and set **base: `dev`**, **compare: `feature/<branch-name>`**.
 
 #### Dev Branch → Development Environment
 - PR review and approval required
@@ -293,7 +297,8 @@ Feature Branch          Dev Branch              Main Branch
 - Allows testing with real data before production
 
 #### Pull Request to Main → Validation
-- Create PR from `dev` branch to `main`
+- Create PR from `dev` branch to `main` within your fork: `base: main` ← `compare: dev`
+  Direct URL: `https://github.com/<your-username>/dac-demo-detection-rules/compare/main...dev?expand=1`
 - Automated validation workflow runs:
   - Syntax validation for all rules
   - KQL query validation

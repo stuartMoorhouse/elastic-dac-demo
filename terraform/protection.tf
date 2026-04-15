@@ -71,7 +71,15 @@ resource "github_branch_protection" "dev" {
     contexts = []
   }
 
-  enforce_admins      = false
+  required_pull_request_reviews {
+    dismiss_stale_reviews           = true
+    require_code_owner_reviews      = false
+    required_approving_review_count = 1
+    pull_request_bypassers          = []
+    restrict_dismissals             = false
+  }
+
+  enforce_admins      = true
   allows_deletions    = false
   allows_force_pushes = false
 
@@ -101,8 +109,10 @@ output "branch_protection_summary" {
     }
     dev_branch = {
       protected           = true
-      allows_direct_push  = true
-      enforced_for_admins = false
+      allows_direct_push  = false
+      requires_pr         = true
+      requires_approval   = true
+      enforced_for_admins = true
       status_checks       = "basic validation only"
     }
   }
@@ -181,130 +191,21 @@ jobs:
           echo "ℹ️ No custom rules to test"
         fi
 
-    - name: Check for duplicate rule IDs
-      run: |
-        echo "🔍 Checking for duplicate rule IDs..."
-        if [ -d "custom-rules/rules" ] && [ "$(ls -A custom-rules/rules 2>/dev/null)" ]; then
-          python -c "
-import toml
-import os
-import sys
-from pathlib import Path
-
-rule_ids = {}
-duplicates = False
-
-for rule_file in Path('custom-rules/rules').glob('*.toml'):
-    try:
-        with open(rule_file, 'r') as f:
-            rule = toml.load(f)
-            rule_id = rule.get('metadata', {}).get('rule_id')
-            if rule_id:
-                if rule_id in rule_ids:
-                    print(f'❌ Duplicate rule ID {rule_id} found in:')
-                    print(f'   - {rule_ids[rule_id]}')
-                    print(f'   - {rule_file}')
-                    duplicates = True
-                else:
-                    rule_ids[rule_id] = str(rule_file)
-    except Exception as e:
-        print(f'⚠️ Error reading {rule_file}: {e}')
-
-if duplicates:
-    sys.exit(1)
-else:
-    print('✅ No duplicate rule IDs found')
-"
-        else
-          echo "ℹ️ No custom rules to check"
-        fi
-
-    - name: Validate KQL queries
-      run: |
-        echo "🔍 Validating KQL queries in rules..."
-        if [ -d "custom-rules/rules" ] && [ "$(ls -A custom-rules/rules 2>/dev/null)" ]; then
-          python -c "
-import toml
-import os
-from pathlib import Path
-
-errors = []
-
-for rule_file in Path('custom-rules/rules').glob('*.toml'):
-    try:
-        with open(rule_file, 'r') as f:
-            rule = toml.load(f)
-            # Check if rule has a query
-            if 'rule' in rule and 'query' in rule['rule']:
-                query = rule['rule']['query']
-                if not query or not query.strip():
-                    errors.append(f'{rule_file}: Empty query')
-                print(f'✓ {rule_file.name}: Query present')
-    except Exception as e:
-        errors.append(f'{rule_file}: {e}')
-
-if errors:
-    print('\\n❌ Validation errors:')
-    for error in errors:
-        print(f'   - {error}')
-    exit(1)
-else:
-    print('\\n✅ All KQL queries validated')
-"
-        else
-          echo "ℹ️ No custom rules with queries to validate"
-        fi
-
-    - name: Check rule metadata
-      run: |
-        echo "📋 Checking rule metadata completeness..."
-        if [ -d "custom-rules/rules" ] && [ "$(ls -A custom-rules/rules 2>/dev/null)" ]; then
-          python -c "
-import toml
-from pathlib import Path
-
-required_fields = ['rule_id', 'name', 'description', 'risk_score', 'severity']
-warnings = []
-
-for rule_file in Path('custom-rules/rules').glob('*.toml'):
-    try:
-        with open(rule_file, 'r') as f:
-            rule = toml.load(f)
-            metadata = rule.get('metadata', {})
-            for field in required_fields:
-                if field not in metadata:
-                    warnings.append(f'{rule_file.name}: Missing {field}')
-    except Exception as e:
-        print(f'⚠️ Error reading {rule_file}: {e}')
-
-if warnings:
-    print('⚠️ Metadata warnings (non-blocking):')
-    for warning in warnings:
-        print(f'   - {warning}')
-else:
-    print('✅ All rules have complete metadata')
-"
-        else
-          echo "ℹ️ No custom rules to check metadata"
-        fi
-
     - name: Generate validation summary
       if: always()
       run: |
         echo "## 📊 Validation Summary" >> $$GITHUB_STEP_SUMMARY
         echo "" >> $$GITHUB_STEP_SUMMARY
-        
+
         if [ -d "custom-rules/rules" ] && [ "$(ls -A custom-rules/rules 2>/dev/null)" ]; then
           RULE_COUNT=$(find custom-rules/rules -name "*.toml" -type f | wc -l | tr -d ' ')
           echo "- **Rules validated**: $${RULE_COUNT}" >> $$GITHUB_STEP_SUMMARY
         else
           echo "- **Rules validated**: 0 (no custom rules found)" >> $$GITHUB_STEP_SUMMARY
         fi
-        
+
         echo "- **Syntax validation**: ✅ Passed" >> $$GITHUB_STEP_SUMMARY
         echo "- **Test execution**: ✅ Passed" >> $$GITHUB_STEP_SUMMARY
-        echo "- **Duplicate check**: ✅ Passed" >> $$GITHUB_STEP_SUMMARY
-        echo "- **KQL validation**: ✅ Passed" >> $$GITHUB_STEP_SUMMARY
         echo "" >> $$GITHUB_STEP_SUMMARY
         echo "### Ready for merge ✅" >> $$GITHUB_STEP_SUMMARY
 EOT

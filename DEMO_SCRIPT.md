@@ -11,15 +11,15 @@
 
 ### Critical: Python Environment Setup (DO THIS FIRST - Takes 2+ minutes)
 ```bash
+ cd ../dac-demo-detection-rules
 # IN THE dac-demo-detection-rules DIRECTORY:
-  cd dac-demo-detection-rules
   python3 -m venv env
   source env/bin/activate
+
   # Extract required Python version from pyproject.toml and check
-  REQ_PYTHON=$(python -c "import toml; 
-  print(toml.load('pyproject.toml')['project']['requires-python'].replace('>=',''))")
-  python -c "import sys; req=tuple(map(int,'$REQ_PYTHON'.split('.'))); exit(0 if sys.version_info[:2] >=
-   req else 1)" || (echo "Error: Python $REQ_PYTHON+ required, got $(python --version)" && exit 1)
+  REQ_PYTHON=$(python -c "import toml; print(toml.load('pyproject.toml')['project']['requires-python'].replace('>=',''))")
+  python -c "import sys; req=tuple(map(int,'$REQ_PYTHON'.split('.'))); exit(0 if sys.version_info[:2] >= req else 1)" && echo "Python version OK ($REQ_PYTHON+ required, got $(python --version))" || (echo "Error: Python $REQ_PYTHON+ required, got $(python --version)" && exit 1)
+
   pip install -e ".[dev]"
   pip install lib/kql lib/kibana
 
@@ -89,7 +89,7 @@ Context: Supply chain compromise campaign
 1. Click "Create new rule" → "Custom query"
 2. **Fill in the rule details:**
    - Name: "Outbound C2 Beacon Activity to Known Malicious Infrastructure"
-   - Description: "Detects beaconing behavior to threat intel flagged C2 ranges"
+   - Description: "Detects beaconing behavior from known malicious IPs"
    - Severity: Critical
    - Risk score: 90
 
@@ -98,28 +98,35 @@ Context: Supply chain compromise campaign
 event.category:network and 
 network.direction:outbound and 
 destination.ip:(
-  185.220.101.0/24 OR
+  185.220.101.0/24 or 
   194.147.78.0/24
 ) and 
 network.bytes < 1024 and
-NOT user.name:(security_scanner OR backup_service)
+not user.name:(security_scanner or backup_service)
+
+
 ```
 
 4. **Add MITRE ATT&CK mapping:**
    - Tactic: Command and Control  
-   - Technique: T1071.001 - Application Layer Protocol: Web Protocols
-
+   - Technique: T1071 - Application Layer Protocol
+   - Sub-technique: T1071.001 - Web Protocol
 5. **Save and enable the rule**
 
-I'm creating this rule in our local Elastic instance to validate the query. It detects small outbound packets to known C2 infrastructure from our threat intel feeds.
-
 **Export to Git:**
+In dac-demo-detection-rules:
+
 ```bash
-# Create feature branch
+# Switch to dev and pull latest before branching
+# (feature branch MUST be based on dev, not main — otherwise the
+# PR will include workflow-file drift between main and dev)
+git checkout dev
+git pull origin dev
+
+# Create feature branch off dev
 git checkout -b feature/c2-beacon-detection
 
 # Export the rule from Kibana
-cd dac-demo-detection-rules
 python -m detection_rules kibana --space default export-rules \
   --directory dac-demo/rules/ --custom-rules-only --strip-version
 
@@ -129,13 +136,21 @@ git commit -m "feat: Add C2 beacon detection for threat intel IOCs"
 git push origin feature/c2-beacon-detection
 ```
 
-Now I export the tested rule to Git. This starts our automated CI/CD pipeline.
 
 ---
 
 ### 4. Peer Review (60 seconds)
 
-**Show:** Create PR 
+**Show:** Create PR
+
+**Creating the PR (base = `dev` on your fork, NOT upstream elastic/detection-rules):**
+
+Use this direct URL:
+```
+https://github.com/stuartMoorhouse/dac-demo-detection-rules/compare/dev...feature/c2-beacon-detection?expand=1
+```
+
+> **Note:** GitHub's "Compare & pull request" banner on a fork always targets the upstream `elastic/detection-rules` repo. If you land on that page, change the **"base repository"** dropdown from `elastic/detection-rules` to `stuartMoorhouse/dac-demo-detection-rules` and set base branch to `dev`.
 
 **Key points to highlight:**
 - Automatic PR creation after validation passes
@@ -143,8 +158,6 @@ Now I export the tested rule to Git. This starts our automated CI/CD pipeline.
 - **Switch to Detection Team Lead browser/profile**
 - Team Lead reviews: "LGTM - critical coverage for active threat"
 - Team Lead approves the PR
-
-The push automatically created a pull request to our dev branch. After validation passes, our Detection Team Lead reviews and approves - the simple query is clear and effective for addressing the active threat.
 
 ---
 
@@ -159,25 +172,23 @@ The push automatically created a pull request to our dev branch. After validatio
 
 After merging, the rule automatically deploys to Development. We can validate it's detecting beaconing patterns to the flagged C2 infrastructure.
 
+
+
+<!-- 
 ---
 
 ### 6. Production Deployment (60 seconds)
 
 **Show:** Create PR from dev to main branch
 
-**IMPORTANT: Creating PR within your fork via GitHub UI:**
-1. Go to your fork: `https://github.com/stuartMoorhouse/dac-demo-detection-rules`
-https://github.com/stuartMoorhouse/dac-demo-detection-rules/compare/main...dev?expand=1
-2. Click "Pull requests" tab (NOT the "Contribute" button)
-3. Click "New pull request"
-4. Change base repository from "elastic/detection-rules" to "stuartMoorhouse/dac-demo-detection-rules"
-5. Select base: `main`, compare: `dev`
-6. Create the PR
+**Creating the PR (base = `main` on your fork, NOT upstream elastic/detection-rules):**
 
-**Alternative: Direct URL for PR creation:**
+Use this direct URL:
 ```
-https://github.com/stuartMoorhouse/dac-demo-detection-rules/compare/main...dev
+https://github.com/stuartMoorhouse/dac-demo-detection-rules/compare/main...dev?expand=1
 ```
+
+> **Note:** GitHub's "Compare & pull request" banner on a fork always targets the upstream `elastic/detection-rules` repo. If you land on that page, change the **"base repository"** dropdown from `elastic/detection-rules` to `stuartMoorhouse/dac-demo-detection-rules` and set base branch to `main`.
 
 **Highlight:**
 - Additional validation checks for production
@@ -230,4 +241,4 @@ A: Read-only in production; all changes through Git
 A: Private repository with restricted access
 
 **Q: What about rule tuning?**
-A: Same workflow - create PR with threshold adjustments
+A: Same workflow - create PR with threshold adjustments -->
