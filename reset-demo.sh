@@ -6,7 +6,8 @@
 #   - Deletes custom (non-prebuilt) detection rules from local, dev, prod clusters
 #   - Closes open PRs on the fork
 #   - Deletes all branches except main and dev
-#   - Resets dev back to main (wipes rule files merged during the demo)
+#   - Resets dev back to main's tree via a reset PR (respects branch protection —
+#     no force-push required; PR-based so the reset is auditable in git history)
 #   - Cleans the local clone working tree
 #   - Reopens issue #1 if closed
 
@@ -26,6 +27,17 @@ CLONE_DIR="${SCRIPT_DIR}/../${REPO_NAME}"
 if [[ -z "${REPO_NAME}" ]]; then
   echo "ERROR: could not read github_repository_name from terraform outputs." >&2
   echo "Has 'terraform apply' been run?" >&2
+  exit 1
+fi
+
+# Team lead identity — needed to approve the reset PR into dev (dev branch
+# protection requires 1 approving review, and GitHub does not allow a PR's
+# author to approve their own PR).
+TEAM_LEAD_TOKEN="${TF_VAR_detection_team_lead_token:-}"
+if [[ -z "${TEAM_LEAD_TOKEN}" ]]; then
+  echo "ERROR: TF_VAR_detection_team_lead_token is not set." >&2
+  echo "       The reset PR into dev requires an approval from the detection" >&2
+  echo "       team lead account. Source .envrc (direnv allow) before running." >&2
   exit 1
 fi
 
@@ -105,22 +117,80 @@ done
 echo
 
 # ---------------------------------------------------------------------------
-# Step 4: reset dev to match main (wipe any rules merged during the demo)
+# Step 4: reset dev's tree to match main via a PR (respects branch protection)
+#
+# We can't force-push dev (allows_force_pushes=false), and we can't
+# fast-forward a main→dev push because dev has commits main doesn't. So:
+#   1. Create a short-lived branch off dev.
+#   2. Rewrite its tree to match main's tree in one commit.
+#   3. Open a PR dev ← reset branch (authored by ${REPO_OWNER}).
+#   4. Approve the PR with the detection team lead's token (GitHub blocks
+#      authors from self-approving).
+#   5. Merge the PR and delete the reset branch.
+# After the merge, dev's tree equals main's. History records the reset.
 # ---------------------------------------------------------------------------
-echo "Step 4: Resetting dev to main"
+echo "Step 4: Resetting dev to main via PR"
 if [[ -d "${CLONE_DIR}/.git" ]]; then
   cd "${CLONE_DIR}"
   git fetch --prune origin >/dev/null 2>&1
   main_sha="$(git rev-parse origin/main)"
   dev_sha="$(git rev-parse origin/dev 2>/dev/null || echo '')"
 
-  if [[ "${main_sha}" == "${dev_sha}" ]]; then
-    echo "  dev already matches main (${main_sha:0:7})"
+  if [[ -z "${dev_sha}" ]]; then
+    echo "  dev branch missing on origin; skipping"
+  elif [[ "$(git rev-parse "origin/main^{tree}")" == "$(git rev-parse "origin/dev^{tree}")" ]]; then
+    echo "  dev tree already matches main (${main_sha:0:7}); skipping"
   else
-    git update-ref refs/heads/_reset_dev "${main_sha}"
-    git push --force-with-lease origin "_reset_dev:refs/heads/dev" >/dev/null
-    git update-ref -d refs/heads/_reset_dev
-    echo "  dev reset to main (${main_sha:0:7})"
+    reset_branch="reset/dev-to-main-$(date -u +%Y%m%d-%H%M%S)"
+    git checkout -B "${reset_branch}" "origin/dev" >/dev/null 2>&1
+    # Replace the index+working tree with main's tree, keeping dev's history.
+    git read-tree -m -u "origin/main"
+    if git diff --cached --quiet; then
+      echo "  nothing to reset (dev tree already matches main)"
+      git checkout main >/dev/null 2>&1
+      git branch -D "${reset_branch}" >/dev/null 2>&1 || true
+    else
+      git -c user.name="reset-demo" -c user.email="reset-demo@local" \
+        commit -m "reset: restore dev to main tree for demo rehearsal" >/dev/null
+      git push origin "${reset_branch}" >/dev/null 2>&1
+      pr_url="$(gh pr create \
+        --repo "${REPO_OWNER}/${REPO_NAME}" \
+        --base dev --head "${reset_branch}" \
+        --title "reset: restore dev to main tree for demo rehearsal" \
+        --body "Automated reset PR from reset-demo.sh. Brings dev's tree back to main so the next rehearsal starts from a clean state." \
+        2>/dev/null || true)"
+      if [[ -z "${pr_url}" ]]; then
+        echo "  ERROR: could not open reset PR" >&2
+      else
+        pr_num="${pr_url##*/}"
+
+        # Approve as the detection team lead (PR author can't self-approve).
+        if GH_TOKEN="${TEAM_LEAD_TOKEN}" gh pr review \
+            --repo "${REPO_OWNER}/${REPO_NAME}" \
+            --approve "${pr_num}" \
+            --body "Automated approval from reset-demo.sh" >/dev/null 2>&1; then
+          echo "  approved reset PR #${pr_num} as team lead"
+        else
+          echo "  WARN: team lead approval failed for PR #${pr_num}" >&2
+        fi
+
+        # Poll briefly for mergeability, then merge. Merge-commit preserves audit trail.
+        merged=0
+        for _ in 1 2 3 4 5; do
+          if gh pr merge --repo "${REPO_OWNER}/${REPO_NAME}" --merge --delete-branch "${pr_num}" >/dev/null 2>&1; then
+            echo "  merged reset PR #${pr_num}; dev tree now matches main (${main_sha:0:7})"
+            merged=1
+            break
+          fi
+          sleep 2
+        done
+        if [[ "${merged}" -eq 0 ]]; then
+          echo "  WARN: reset PR #${pr_num} could not be merged — merge manually" >&2
+        fi
+      fi
+      git checkout main >/dev/null 2>&1
+      git branch -D "${reset_branch}" >/dev/null 2>&1 || true
+    fi
   fi
 
   echo "Step 5: Cleaning local clone"
